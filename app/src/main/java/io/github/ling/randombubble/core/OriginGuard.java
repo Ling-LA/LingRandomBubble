@@ -5,9 +5,7 @@ import java.util.Locale;
 /** Deny known repeat/forward paths. Positive authorization is still mandatory. */
 public final class OriginGuard {
     private OriginGuard() {}
-    /** Strict allowlist: absence of a recognizable QQ input frame is a safe skip.
-     * The target's async dispatch may lose this frame; do not broaden blindly.
-     */
+    /** True when this thread still contains the input UI. NT usually sends later, on another thread. */
     public static boolean composerStack(StackTraceElement[] stack) {
         if (stack == null) return false;
         for (StackTraceElement f : stack) {

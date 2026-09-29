@@ -20,23 +20,60 @@ import java.util.Set;
 /** Legacy Xposed API 82 entry for the user's NPatch setup. No QFun classes are hooked. */
 public final class HookEntry implements IXposedHookLoadPackage {
     private static boolean started;
+    private boolean startRetryPosted;
+    private int startAttempts;
     private final Set<Method> installed=new HashSet<>();
     private HostRuntime runtime;
     private UiTapGate taps;
     private ClassLoader loader;
     private int attempts;
     @Override public void handleLoadPackage(XC_LoadPackage.LoadPackageParam p) throws Throwable {
-        if(!"com.tencent.mobileqq".equals(p.packageName) || !"com.tencent.mobileqq".equals(p.processName)) return;
-        XposedHelpers.findAndHookMethod(Application.class,"attach",Context.class,new XC_MethodHook() {
-            @Override protected void afterHookedMethod(MethodHookParam param) {
-                try { start((Application)param.thisObject,(Context)param.args[0]); }
-                catch(Throwable e) { XposedBridge.log("[LingBubble] attach failed: "+e.getClass().getSimpleName()); }
-            }
-        });
+        if(!"com.tencent.mobileqq".equals(p.packageName)) return;
+        if(p.processName!=null && !p.packageName.equals(p.processName)) return;
+        loader=p.classLoader;
+        // onCreate is public. Application.attach is hidden and can be blocked, which previously
+        // left the module installed but never started inside NPatch.
+        try {
+            XposedHelpers.findAndHookMethod(Application.class,"onCreate",new XC_MethodHook() {
+                @Override protected void afterHookedMethod(MethodHookParam param) {
+                    if(param.thisObject instanceof Application) start((Application)param.thisObject);
+                }
+            });
+        } catch(Throwable e) { XposedBridge.log("[LingBubble] onCreate hook failed: "+e); }
+        try {
+            XposedHelpers.findAndHookMethod(Application.class,"attach",Context.class,new XC_MethodHook() {
+                @Override protected void afterHookedMethod(MethodHookParam param) {
+                    if(param.thisObject instanceof Application) start((Application)param.thisObject);
+                }
+            });
+        } catch(Throwable e) { XposedBridge.log("[LingBubble] attach hook failed: "+e); }
+        Application current=currentApplication();
+        if(current!=null) start(current);
     }
-    private synchronized void start(Application app,Context context) {
-        if(started) return; started=true;
-        loader=context.getClassLoader(); runtime=new HostRuntime(context.getApplicationContext()==null?context:context.getApplicationContext(),loader);
+    private static Application currentApplication() {
+        try {
+            Class<?> thread=Class.forName("android.app.ActivityThread");
+            Object app=thread.getMethod("currentApplication").invoke(null);
+            return app instanceof Application ? (Application)app : null;
+        } catch(Throwable e) { return null; }
+    }
+    private synchronized void start(Application app) {
+        if(started || app==null || !"com.tencent.mobileqq".equals(app.getPackageName())) return;
+        startRetryPosted=false;
+        Context context=app.getApplicationContext()==null ? app : app.getApplicationContext();
+        ClassLoader candidate=context.getClassLoader();
+        try { Class.forName("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy",false,candidate); }
+        catch(Throwable e) {
+            if(startAttempts++<20) {
+                if(!startRetryPosted) {
+                    startRetryPosted=true;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> start(app),1000);
+                }
+            } else XposedBridge.log("[LingBubble] QQ kernel class never appeared");
+            return;
+        }
+        started=true;
+        loader=candidate; runtime=new HostRuntime(context,loader);
         taps=new UiTapGate(runtime);
         XposedBridge.log("[LingBubble] initialize QQ="+runtime.qqVersion+" targetMatched="+runtime.versionSupported);
         installTapObserver(); attemptHooks(); runtime.bridge.start();

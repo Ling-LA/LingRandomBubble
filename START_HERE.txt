@@ -1,4 +1,4 @@
-Ling 随机气泡 0.1.0 实验版 — 源码交付
+Ling 随机气泡 0.1.1 实验版 — 源码交付
 
 这不是 APK，也不是 QFun 脚本。请不要直接安装或改后缀。
 
@@ -7,7 +7,7 @@ Ling 随机气泡 0.1.0 实验版 — 源码交付
 
 电脑构建：准备 JDK 17/21 + Android SDK API 35 + Build-Tools 35.0.0，
 然后双击 Build-Windows.cmd。首次需要联网下载构建依赖。
-成功后 APK 才会生成于 out/LingRandomBubble-0.1.0-debug.apk。
+成功后 APK 才会生成于 out/LingRandomBubble-0.1.1-debug.apk。
 
 也提供手动触发的 GitHub Actions 构建流程；本次没有上传到你的仓库。
 

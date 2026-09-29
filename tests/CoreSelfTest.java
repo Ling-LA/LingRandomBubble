@@ -59,8 +59,8 @@ public final class CoreSelfTest {
         test("forward stack blocked",()->ok(OriginGuard.deniedStack(frame("com.tencent.qqnt.kernel.SomeClass","forwardMsg"))));
         test("follow/repeater stack blocked",()->ok(OriginGuard.deniedStack(frame("com.tencent.mobileqq.aio.msgfollow.Follow","run"))));
         test("native composer stack allowed by deny check",()->ok(!OriginGuard.deniedStack(NORMAL)));
-        test("unknown async source rejected even with matching click",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),frame("com.tencent.qqnt.AsyncWorker","run"),0).reason,SendPolicy.Reason.UNKNOWN_SOURCE);});
-        test("unknown source consumes stale pending permit",()->{Env e=new Env();e.permit.arm("hi",1000);e.run(args("hi",null),frame("obfuscated.a","run"),0);ok(!e.permit.consume("hi",1002));});
+        test("kernel async send with matching click is applied once",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),frame("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg"),0).reason,SendPolicy.Reason.APPLIED);ok(!e.permit.consume("hi",1002));});
+        test("kernel async send without click is not modified",()->{Env e=new Env();eq(e.run(args("hi",null),frame("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg"),0).reason,SendPolicy.Reason.NO_PERMIT);});
         test("missing stack fails closed",()->ok(OriginGuard.deniedStack(null)));
         test("normal fresh plain text produces replacement",()->{Env e=new Env();Object[] a=args("hi",null);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.APPLIED);ok(a[3]==null);});
         test("QFun direct send denied even with matching pending tap",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),frame("me.yxp.qfun.hook.chat.RepeatMsg","directSend"),0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});

@@ -57,19 +57,21 @@ final class UiTapGate {
     private static View hitSend(View root,int x,int y) {
         List<View> path=new ArrayList<>(); int[] budget={1200};
         if(!hitPath(root,x,y,path,budget,0)) return null;
-        boolean label=false;
+        View labeled=null;
         // Only consider the actual touched branch; no search of unrelated siblings.
+        // QQ's clickable ancestor is often the full-width input bar. The compact 发送 label
+        // on that same path is still the button the user pressed.
         for(int i=path.size()-1;i>=0;i--) {
             View v=path.get(i);
-            if(v instanceof TextView && sendLabel(((TextView)v).getText())) label=true;
-            if(sendLabel(v.getContentDescription())) label=true;
-            if(label && v.isClickable() && v.isEnabled()) {
-                float d=v.getResources().getDisplayMetrics().density;
-                if(v.getHeight()>180*d || v.getWidth()>320*d) return null;
-                return v;
-            }
+            boolean marked=(v instanceof TextView && sendLabel(((TextView)v).getText())) || sendLabel(v.getContentDescription());
+            if(marked && compact(v)) labeled=v;
+            if(labeled!=null && v.isClickable() && v.isEnabled()) return compact(v) ? v : labeled;
         }
-        return null;
+        return labeled!=null && labeled.isClickable() ? labeled : null;
+    }
+    private static boolean compact(View v) {
+        float d=v.getResources().getDisplayMetrics().density;
+        return v.getHeight()<=180*d && v.getWidth()<=320*d;
     }
     private static boolean sendLabel(CharSequence s) {
         if(s==null) return false;

@@ -77,7 +77,7 @@ public final class MainActivity extends Activity {
         });
         scroll.requestApplyInsets();
         text("Ling 随机气泡",28,true);
-        text("0.1.0 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行",14,false);
+        text("0.1.1 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行",14,false);
         text("此版本需要在 NPatch 中加载到 QQ。安装本应用并不表示已经激活。所有气泡效果均需在另一台未装模块的 QQ 上验证。",14,false);
         JSONObject j=repo.snapshot();
         section("开关");

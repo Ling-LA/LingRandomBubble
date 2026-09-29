@@ -28,7 +28,8 @@ public final class SendPolicy {
             boolean reused=originals.contains(args[2]) || originals.contains(args[3]);
             if(args[2] instanceof List) for(Object e:(List<?>)args[2]) reused|=originals.contains(e);
             if(forwardDepth>0 || reused || OriginGuard.deniedStack(stack)) return skip(Reason.ORIGINAL_OR_REPEAT);
-            if(!OriginGuard.composerStack(stack)) return skip(Reason.UNKNOWN_SOURCE);
+            // QQ NT posts sendMsg off the input thread, so the composer frame is usually absent.
+            // The one-time Send-button permit is the authorization; denied stacks still block repeats.
             if(args[1]==null) return skip(Reason.UNSUPPORTED);
             int type=Reflect.intValue(Reflect.get(args[1],"chatType"));
             if(!((type==1 && privateChats)||(type==2 && groups))) return skip(Reason.UNSUPPORTED);

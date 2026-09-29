@@ -85,7 +85,7 @@ final class HostRuntime {
     void leaveForward() { int n=forwarding.get()-1; if(n<=0) forwarding.remove(); else forwarding.set(n); }
     void setError(String message) { error=message; }
     String report() {
-        return "Ling 随机气泡 0.1.0-experimental\nQQ："+qqVersion+"\n版本门控："+(versionSupported?"匹配目标":"不匹配，禁止修改")
+        return "Ling 随机气泡 0.1.1-experimental\nQQ："+qqVersion+"\n版本门控："+(versionSupported?"匹配目标":"不匹配，禁止修改")
             +"\n发送接口："+sendInstalled+"\n转发回避接口："+forwardInstalled+"\n原消息识别接口："+recordInstalled
             +"\n发送按钮观察："+tapInstalled+"\n配置桥接："+bridgeHealthy
             +"\n\n有效发送点击："+arms.get()+"\n已替换发送参数："+applied.get()
