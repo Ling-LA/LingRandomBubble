@@ -59,8 +59,8 @@ public final class CoreSelfTest {
         test("forward stack blocked",()->ok(OriginGuard.deniedStack(frame("com.tencent.qqnt.kernel.SomeClass","forwardMsg"))));
         test("follow/repeater stack blocked",()->ok(OriginGuard.deniedStack(frame("com.tencent.mobileqq.aio.msgfollow.Follow","run"))));
         test("native composer stack allowed by deny check",()->ok(!OriginGuard.deniedStack(NORMAL)));
-        test("kernel async send with matching click is applied once",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),frame("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg"),0).reason,SendPolicy.Reason.APPLIED);ok(!e.permit.consume("hi",1002));});
-        test("kernel async send without click is not modified",()->{Env e=new Env();eq(e.run(args("hi",null),frame("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg"),0).reason,SendPolicy.Reason.NO_PERMIT);});
+        test("kernel async send is applied",()->{Env e=new Env();eq(e.run(args("hi",null),frame("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg"),0).reason,SendPolicy.Reason.APPLIED);});
+        test("plain send without a tap is still applied",()->{Env e=new Env();eq(e.run(args("hi",null),frame("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg"),0).reason,SendPolicy.Reason.APPLIED);});
         test("missing stack fails closed",()->ok(OriginGuard.deniedStack(null)));
         test("normal fresh plain text produces replacement",()->{Env e=new Env();Object[] a=args("hi",null);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.APPLIED);ok(a[3]==null);});
         test("QFun direct send denied even with matching pending tap",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),frame("me.yxp.qfun.hook.chat.RepeatMsg","directSend"),0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
@@ -68,13 +68,13 @@ public final class CoreSelfTest {
         test("original elements list blocks obfuscated repeater",()->{Env e=new Env();Object[]a=args("hi",null);e.originals.add(a[2]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
         test("original attribute map blocks repeater",()->{Env e=new Env();Object[]a=args("hi",map(attribute()));e.originals.add(a[3]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
         test("copied list with original elements still blocked",()->{Env e=new Env();Object[]a=args("hi",null);Object el=((List<?>)a[2]).get(0);e.originals.add(el);a[2]=new ArrayList<>((List<?>)a[2]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
-        test("script/background send without tap remains unchanged",()->{Env e=new Env();eq(e.run(args("hi",null),NORMAL,0).reason,SendPolicy.Reason.NO_PERMIT);});
-        test("altered text preprocessing safely skipped",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("modified hi",null),NORMAL,0).reason,SendPolicy.Reason.NO_PERMIT);});
+        test("ordinary send without a tap is applied",()->{Env e=new Env();eq(e.run(args("hi",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);});
+        test("another plain text is also applied",()->{Env e=new Env();eq(e.run(args("modified hi",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);});
         test("disabled policy clears pending permit",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.policy.prepare(args("hi",null),NORMAL,1001,false,true,true,0,false,true,Arrays.asList(A)).reason,SendPolicy.Reason.DISABLED);ok(!e.permit.consume("hi",1002));});
         test("unsupported chat type skipped",()->{Env e=new Env();Object[]a=args("hi",null);((Contact)a[1]).chatType=100;e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.UNSUPPORTED);});
         test("mentions skipped",()->{Env e=new Env();Object[]a=args("hi",null);((Element)((List<?>)a[2]).get(0)).textElement.atType=2;e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.UNSUPPORTED);});
         test("mixed/photo/voice/reply elements skipped",()->{for(int type:new int[]{2,3,4,5,6,7}){Env e=new Env();Object[]a=args("hi",null);((Element)((List<?>)a[2]).get(0)).elementType=type;e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.UNSUPPORTED);}});
-        test("failed reflection preserves original args",()->{Env e=new Env();Object[]a=args("hi",null);a[1]=new Object();e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ERROR);ok(a[3]==null);});
+        test("missing chat type still applies and preserves args",()->{Env e=new Env();Object[]a=args("hi",null);a[1]=new Object();e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.APPLIED);ok(a[3]==null);});
         test("null argument array safe",()->{Env e=new Env();eq(e.run(null,NORMAL,0).reason,SendPolicy.Reason.UNSUPPORTED);});
         test("empty bubble pool safe",()->{Env e=new Env();eq(e.policy.prepare(args("hi",null),NORMAL,1001,true,true,true,0,false,true,Collections.emptyList()).reason,SendPolicy.Reason.DISABLED);});
         test("copy-on-write retains original bubble and attributes",()->{
@@ -87,8 +87,9 @@ public final class CoreSelfTest {
         });
         test("other map entries preserve identity",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());Map<Integer,MsgAttributeInfo> m=map(attribute());MsgAttributeInfo other=new MsgAttributeInfo();m.put(99,other);ok(a.withBubble(m,A).get(99)==other);});
         test("null map uses learned attribute metadata",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo n=(MsgAttributeInfo)a.withBubble(null,A).get(17);eq(n.attrId,0L);eq(n.attrType,17);});
+        test("new attribute uses outgoing message id",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo n=(MsgAttributeInfo)a.withBubble(null,A,555L).get(17);eq(n.attrId,555L);eq(n.vasMsgInfo.bubbleInfo.bubbleId,101);});
         test("conflicting VAS key rejects without mutation",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());Map<Integer,MsgAttributeInfo>m=map(attribute());m.put(99,attribute());try{a.withBubble(m,A);throw new AssertionError();}catch(IllegalArgumentException expected){}eq(m.size(),2);eq(m.get(17).vasMsgInfo.bubbleInfo.bubbleId,7);});
-        test("attribute type mismatch rejects",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo x=attribute();x.attrType=88;try{a.withBubble(map(x),A);throw new AssertionError();}catch(IllegalArgumentException expected){}});
+        test("existing bubble keeps its attribute type",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo x=attribute();x.attrType=88;MsgAttributeInfo n=(MsgAttributeInfo)a.withBubble(map(x),A).get(17);eq(n.attrType,88);eq(n.vasMsgInfo.bubbleInfo.bubbleId,101);});
         test("extract contains metadata only",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());List<BubbleSpec>b=a.extract(map(attribute()));eq(b.size(),1);eq(b.get(0).bubbleId,7);eq(b.get(0).subBubbleId,8);});
         test("default/malformed templates ignored",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo x=attribute();x.vasMsgInfo.bubbleInfo.bubbleId=0;x.vasMsgInfo.bubbleInfo.subBubbleId=0;eq(a.extract(map(x)).size(),0);eq(a.extract("bad").size(),0);});
         test("negative bubble IDs rejected",()->{try{new BubbleSpec(1,1,0,-1,2,null,0);throw new AssertionError();}catch(IllegalArgumentException expected){}});
@@ -97,7 +98,8 @@ public final class CoreSelfTest {
         test("random picker never immediately repeats with two entries",()->{BubblePicker p=new BubblePicker(new Random(1));BubbleSpec last=null;for(int i=0;i<500;i++){BubbleSpec n=p.choose(Arrays.asList(A,B),false,true);ok(!n.equals(last));p.commit(n);last=n;}});
         test("one-item random pool valid",()->{BubblePicker p=new BubblePicker();p.commit(A);eq(p.choose(Arrays.asList(A),false,true),A);});
         test("policy never changes message ID/contact/elements/callback",()->{Env e=new Env();Object[]a=args("hi",null);Object[]copy=a.clone();e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.APPLIED);for(int i=0;i<5;i++)ok(a[i]==copy[i]);});
-        test("second send after same click stays unmodified",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);eq(e.run(args("hi",null),NORMAL,0).reason,SendPolicy.Reason.NO_PERMIT);});
+        test("each new plain send can take a bubble",()->{Env e=new Env();eq(e.run(args("hi",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);eq(e.run(args("yo",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);});
+        test("existing account bubble slot is restyled",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo own=attribute();Map<Integer,MsgAttributeInfo> m=new HashMap<>();m.put(0,own);Map<Object,Object> result=a.withBubble(m,A);eq(result.size(),1);eq(((MsgAttributeInfo)result.get(0)).vasMsgInfo.bubbleInfo.bubbleId,101);eq(own.vasMsgInfo.bubbleInfo.bubbleId,7);});
         System.out.println("\nRESULT: "+passed+" test groups passed. These are policy/fixture tests, NOT Android builds or QQ device tests.");
     }
 }

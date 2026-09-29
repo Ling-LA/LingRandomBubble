@@ -15,18 +15,47 @@ public final class Repository {
     private final SharedPreferences prefs;
     private String lastDiagnostics = "尚未收到 QQ 进程的诊断。安装 APK 不等于模块已注入。";
     private long heartbeat;
-    private Repository(Context c) { prefs = c.getApplicationContext().getSharedPreferences("config", Context.MODE_PRIVATE); }
+    private String account="unknown";
+    private Repository(Context c) {
+        prefs = c.getApplicationContext().getSharedPreferences("config", Context.MODE_PRIVATE);
+        account=prefs.getString("currentAccount","unknown");
+        selectAllExisting();
+    }
+    public synchronized String accountLabel() {
+        if(account==null || "unknown".equals(account) || account.length()<4) return "未识别账号";
+        return "尾号"+account.substring(account.length()-4);
+    }
+    public synchronized void useAccount(String uin) {
+        if(uin==null || !uin.matches("[1-9]\\d{4,12}") || uin.equals(account)) return;
+        String key="state."+uin;
+        if(!prefs.contains(key) && prefs.contains("state")) prefs.edit().putString(key,prefs.getString("state","")).commit();
+        account=uin;
+        prefs.edit().putString("currentAccount",uin).commit();
+    }
+    /** Bubbles participate in sending unless the user later unchecks one. */
+    private void selectAllExisting() {
+        if(prefs.getBoolean("selectedByDefault",false)) return;
+        try {
+            JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles"); boolean changed=false;
+            for(int i=0;i<a.length();i++) if(!a.getJSONObject(i).optBoolean("selected",false)) {
+                a.getJSONObject(i).put("selected",true); changed=true;
+            }
+            if(changed) save(j);
+        } catch(JSONException ignored) { /* keep the current library */ }
+        prefs.edit().putBoolean("selectedByDefault",true).apply();
+    }
     public static synchronized Repository get(Context c) {
         if (instance == null) instance = new Repository(c);
         return instance;
     }
+    private String stateKey() { return "unknown".equals(account)?"state":"state."+account; }
     public synchronized JSONObject snapshot() {
-        try { return JsonCodec.object(prefs.getString("state", JsonCodec.defaults().toString())); }
+        try { return JsonCodec.object(prefs.getString(stateKey(), JsonCodec.defaults().toString())); }
         catch (JSONException e) { return JsonCodec.defaults(); }
     }
     private void save(JSONObject j) throws JSONException {
         JsonCodec.config(j.toString()); // Validate before committing anything.
-        if (!prefs.edit().putString("state", j.toString()).commit()) throw new JSONException("Cannot save configuration");
+        if (!prefs.edit().putString(stateKey(), j.toString()).commit()) throw new JSONException("Cannot save configuration");
     }
     public synchronized void setFlag(String key, boolean value) throws JSONException {
         if (!(key.equals("enabled") || key.equals("collect") || key.equals("fixed") || key.equals("avoidRepeat")
@@ -55,6 +84,21 @@ public final class Repository {
         if (JsonCodec.config(j.toString()).selected.isEmpty()) j.put("enabled",false);
         save(j);
     }
+    /** One explicit favorite from the QQ menu. Stores bubble fields only and selects it for sending. */
+    public synchronized String favorite(String encoded) throws JSONException {
+        if(encoded==null || encoded.length()>4096) throw new JSONException("气泡数据无效");
+        BubbleSpec b=JsonCodec.decode(new JSONObject(encoded));
+        JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles");
+        boolean found=false;
+        for(int i=0;i<a.length();i++) if(JsonCodec.decode(a.getJSONObject(i)).key().equals(b.key())) {
+            a.getJSONObject(i).put("selected",true); found=true; break;
+        }
+        if(!found) {
+            if(a.length()>=JsonCodec.MAX_LIBRARY) throw new JSONException("气泡库已满");
+            a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true));
+        }
+        j.put("enabled",true); save(j); return found ? "selected" : "added";
+    }
     /** Host suggestions cannot enable features or select a bubble. */
     public synchronized void observe(String encoded) throws JSONException {
         if (encoded == null || encoded.length()>32768) return;
@@ -67,7 +111,7 @@ public final class Repository {
         for(int i=0;i<incoming.length() && a.length()<JsonCodec.MAX_LIBRARY;i++) {
             BubbleSpec b=JsonCodec.decode(incoming.getJSONObject(i));
             if(known.add(b.key())) {
-                a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",false)); changed=true;
+                a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true)); changed=true;
             }
         }
         if(changed) save(j);
@@ -96,7 +140,7 @@ public final class Repository {
                 if(a.length()>=JsonCodec.MAX_LIBRARY) throw new JSONException("合并后超过 128 个气泡，未导入");
                 String name=row.optString("name",b.label());
                 if(name.length()>48) name=name.substring(0,48);
-                a.put(JsonCodec.encode(b).put("name",name).put("selected",false)); added++;
+                a.put(JsonCodec.encode(b).put("name",name).put("selected",true)); added++;
             }
         }
         j.put("enabled",false); save(j); return added;

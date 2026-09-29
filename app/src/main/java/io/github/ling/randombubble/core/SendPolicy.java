@@ -10,7 +10,8 @@ public final class SendPolicy {
         public final Reason reason;
         public final HashMap<Object,Object> attributes;
         public final String errorType;
-        private Result(Reason r,HashMap<Object,Object> a,String e) { reason=r; attributes=a; errorType=e; }
+        public final BubbleSpec used;
+        private Result(Reason r,HashMap<Object,Object> a,String e,BubbleSpec used) { reason=r; attributes=a; errorType=e; this.used=used; }
     }
     private final SendPermit permit;
     private final IdentityWeakSet originals;
@@ -19,7 +20,7 @@ public final class SendPolicy {
     public SendPolicy(SendPermit p,IdentityWeakSet o,MsgAttrAdapter a,BubblePicker b) {
         permit=p; originals=o; adapter=a; picker=b;
     }
-    private Result skip(Reason r) { permit.clear(); return new Result(r,null,null); }
+    private Result skip(Reason r) { permit.clear(); return new Result(r,null,null,null); }
     public synchronized Result prepare(Object[] args,StackTraceElement[] stack,long now,boolean ready,
             boolean groups,boolean privateChats,int forwardDepth,boolean fixed,boolean avoidRepeat,List<BubbleSpec> pool) {
         if(!ready || pool==null || pool.isEmpty()) return skip(Reason.DISABLED);
@@ -31,18 +32,23 @@ public final class SendPolicy {
             // QQ NT posts sendMsg off the input thread, so the composer frame is usually absent.
             // The one-time Send-button permit is the authorization; denied stacks still block repeats.
             if(args[1]==null) return skip(Reason.UNSUPPORTED);
-            int type=Reflect.intValue(Reflect.get(args[1],"chatType"));
-            if(!((type==1 && privateChats)||(type==2 && groups))) return skip(Reason.UNSUPPORTED);
+            int type=-1;
+            try { type=Reflect.intValue(Reflect.get(args[1],"chatType")); } catch(Throwable ignored) { /* field name differs; still apply */ }
+            if(type==1 && !privateChats) return skip(Reason.UNSUPPORTED);
+            if(type==2 && !groups) return skip(Reason.UNSUPPORTED);
+            if(type!=-1 && type!=1 && type!=2) return skip(Reason.UNSUPPORTED);
             String text=MsgAttrAdapter.plainText(args[2]);
             if(text==null) return skip(Reason.UNSUPPORTED);
-            if(!permit.consume(text,now)) return skip(Reason.NO_PERMIT);
+            // A real new message is authorized by not being a repeat/forward.
+            // The send-button tap is too easy to miss, and missing it left the account bubble unchanged.
             BubbleSpec b=picker.choose(pool,fixed,avoidRepeat);
             if(b==null) return skip(Reason.DISABLED);
-            HashMap<Object,Object> map=adapter.withBubble(args[3],b);
+            long messageId=args[0] instanceof Number ? ((Number)args[0]).longValue() : -1L;
+            HashMap<Object,Object> map=adapter.withBubble(args[3],b,messageId);
             picker.commit(b);
-            return new Result(Reason.APPLIED,map,null);
+            return new Result(Reason.APPLIED,map,null,b);
         } catch(Throwable e) {
-            permit.clear(); return new Result(Reason.ERROR,null,e.getClass().getSimpleName());
+            permit.clear(); return new Result(Reason.ERROR,null,e.getClass().getSimpleName(),null);
         }
     }
 }

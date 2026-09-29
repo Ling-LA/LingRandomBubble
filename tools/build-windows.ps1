@@ -7,7 +7,7 @@ $transcribing = $false
 try {
     Start-Transcript -Path (Join-Path $root 'build.log') -Force | Out-Null
     $transcribing = $true
-    Write-Host 'Ling Random Bubble 0.1.1 - Android debug build' -ForegroundColor Cyan
+    Write-Host 'Ling Random Bubble 0.1.12 - Android debug build' -ForegroundColor Cyan
     Write-Host 'Requires JDK 17/21 and an installed Android SDK. No APK has been prebuilt in this archive.'
     $jdkCandidates = @($env:JAVA_HOME)
     if ($env:ProgramFiles) { $jdkCandidates += (Join-Path $env:ProgramFiles 'Android\Android Studio\jbr') }
@@ -62,10 +62,10 @@ try {
     if (-not (Test-Path $apk)) { throw 'Build ended without an APK. Do not install a placeholder file.' }
     $out = Join-Path $root 'out'
     New-Item -ItemType Directory -Force -Path $out | Out-Null
-    $target = Join-Path $out 'LingRandomBubble-0.1.1-debug.apk'
+    $target = Join-Path $out 'LingRandomBubble-0.1.12-debug.apk'
     Copy-Item -Force $apk $target
     $sum = (Get-FileHash -Algorithm SHA256 $target).Hash.ToLowerInvariant()
-    Set-Content -Path (Join-Path $out 'SHA256SUMS.txt') -Encoding ascii -Value ($sum + '  LingRandomBubble-0.1.1-debug.apk')
+    Set-Content -Path (Join-Path $out 'SHA256SUMS.txt') -Encoding ascii -Value ($sum + '  LingRandomBubble-0.1.12-debug.apk')
     Write-Host ('APK created: ' + $target) -ForegroundColor Green
     Write-Host 'This is an experimental build, not a verified QQ/NPatch release. Start with the module disabled.'
     if ($transcribing) { Stop-Transcript | Out-Null; $transcribing = $false }

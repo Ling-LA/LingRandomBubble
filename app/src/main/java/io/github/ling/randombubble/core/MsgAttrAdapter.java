@@ -38,25 +38,33 @@ public final class MsgAttrAdapter {
         return out;
     }
     public HashMap<Object,Object> withBubble(Object rawMap, BubbleSpec spec) throws ReflectiveOperationException {
+        return withBubble(rawMap, spec, -1L);
+    }
+    /** messageId is the outgoing send id. A newly created attribute must use it so the server keeps the bubble. */
+    public HashMap<Object,Object> withBubble(Object rawMap, BubbleSpec spec, long messageId) throws ReflectiveOperationException {
         if (rawMap != null && !(rawMap instanceof Map)) throw new IllegalArgumentException("Not an attribute map");
         Map<?,?> original = rawMap == null ? new HashMap<>() : (Map<?,?>)rawMap;
         if (original.size() > 128) throw new IllegalArgumentException("Oversized attributes");
-        // Two VAS entries with different keys are ambiguous. Do not create conflicting attributes.
+        // The outgoing message already carries the account bubble in its own VAS slot.
+        // Put the collected style there instead of refusing a different key.
+        Object vasKey=null; Object vasAttr=null; int vasCount=0;
         for (Map.Entry<?,?> e : original.entrySet()) {
-            if (e.getValue() != null && Reflect.get(e.getValue(), "vasMsgInfo") != null
-                    && !Integer.valueOf(spec.attrKey).equals(e.getKey()))
-                throw new IllegalArgumentException("Different VAS key already present");
+            if (e.getValue()!=null && Reflect.get(e.getValue(), "vasMsgInfo")!=null) {
+                vasCount++; vasKey=e.getKey(); vasAttr=e.getValue();
+            }
         }
-        Object oldAttr = original.get(spec.attrKey);
+        if (vasCount>1) throw new IllegalArgumentException("Different VAS key already present");
+        Object targetKey = vasAttr!=null ? vasKey : Integer.valueOf(spec.attrKey);
+        Object oldAttr = vasAttr!=null ? vasAttr : original.get(spec.attrKey);
         Object attr;
         if (oldAttr != null) {
-            if (Reflect.intValue(Reflect.get(oldAttr, "attrType")) != spec.attrType)
+            if (vasAttr==null && Reflect.intValue(Reflect.get(oldAttr, "attrType")) != spec.attrType)
                 throw new IllegalArgumentException("Attribute type mismatch");
             attr = Reflect.copy(oldAttr); // Preserve current attrId, not donor identity.
         } else {
             attr = create("MsgAttributeInfo");
             Reflect.set(attr, "attrType", spec.attrType);
-            Reflect.set(attr, "attrId", spec.attrId);
+            Reflect.set(attr, "attrId", messageId > 0 ? messageId : spec.attrId);
         }
         Object oldVas = Reflect.get(attr, "vasMsgInfo");
         Object vas = oldVas == null ? create("VASMsgElement") : Reflect.copy(oldVas);
@@ -69,7 +77,7 @@ public final class MsgAttrAdapter {
         Reflect.set(vas, "bubbleInfo", bubble);
         Reflect.set(attr, "vasMsgInfo", vas);
         HashMap<Object,Object> result = new HashMap<>(original);
-        result.put(spec.attrKey, attr);
+        result.put(targetKey, attr);
         return result;
     }
     private Object create(String name) throws ReflectiveOperationException {

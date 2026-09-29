@@ -4,6 +4,7 @@ import android.content.Context;
 import android.os.SystemClock;
 import io.github.ling.randombubble.core.*;
 import io.github.ling.randombubble.store.Config;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,9 @@ final class HostRuntime {
     final ThreadLocal<Integer> forwarding=new ThreadLocal<Integer>() { @Override protected Integer initialValue() { return 0; } };
     final String qqVersion;
     final boolean versionSupported;
-    volatile boolean sendInstalled,forwardInstalled,recordInstalled,tapInstalled,bridgeHealthy;
+    volatile boolean sendInstalled,forwardInstalled,recordInstalled,tapInstalled,menuInstalled,settingInstalled,bridgeHealthy;
+    volatile int menuInjected;
+    private final ArrayDeque<String> logs=new ArrayDeque<>();
     private volatile String error="无";
     private volatile String lastUnknownFrames="未出现";
     private final AtomicLong arms=new AtomicLong(),applied=new AtomicLong(),skipRepeat=new AtomicLong(),
@@ -39,7 +42,7 @@ final class HostRuntime {
         permit.arm(text,SystemClock.uptimeMillis()); arms.incrementAndGet();
     }
     void observeRecord(Object record) {
-        if(record==null || (!bridge.config.enabled && !bridge.config.collect)) return;
+        if(record==null) return;
         recordsSeen.incrementAndGet();
         try {
             Object elements=Reflect.get(record,"elements"), attrs=Reflect.get(record,"msgAttrs");
@@ -56,8 +59,7 @@ final class HostRuntime {
     /** No sends/cancels: only returns a new attributes map after the tested policy passes. */
     synchronized HashMap<Object,Object> prepare(Object[] args,StackTraceElement[] stack) {
         Config c=bridge.config;
-        boolean ready=versionSupported && sendInstalled && forwardInstalled && recordInstalled && tapInstalled
-                && bridgeHealthy && c.enabled;
+        boolean ready=sendInstalled && c.enabled && !c.selected.isEmpty();
         SendPolicy.Result r=policy.prepare(args,stack,SystemClock.uptimeMillis(),ready,c.groups,c.privateChats,
                 forwarding.get(),c.fixed,c.avoidRepeat,c.selected);
         switch(r.reason) {
@@ -76,23 +78,39 @@ final class HostRuntime {
                 break;
             case UNSUPPORTED: skipType.incrementAndGet(); break;
             case NO_PERMIT: skipNoPermit.incrementAndGet(); break;
-            case APPLIED: applied.incrementAndGet(); break;
+            case APPLIED: applied.incrementAndGet(); active=r.used; break;
             case ERROR: errors.incrementAndGet(); setError("发送前跳过："+r.errorType); break;
         }
+        if(r.reason!=SendPolicy.Reason.DISABLED) log("发送结果 "+r.reason+(r.errorType==null?"":" "+r.errorType));
         return r.attributes;
+    }
+    private BubbleSpec active;
+    /** Latest bubble actually attached to a send. Bubble id getters must not roll again. */
+    BubbleSpec currentBubble() { return active; }
+    void log(String line) {
+        String row=android.text.format.DateFormat.format("HH:mm:ss",System.currentTimeMillis())+" "+line;
+        synchronized(logs) { logs.addLast(row); while(logs.size()>80) logs.removeFirst(); }
+        if(bridge!=null) bridge.writeLog(row);
     }
     void enterForward() { permit.clear(); forwarding.set(forwarding.get()+1); skipRepeat.incrementAndGet(); }
     void leaveForward() { int n=forwarding.get()-1; if(n<=0) forwarding.remove(); else forwarding.set(n); }
     void setError(String message) { error=message; }
+    private String dumpLogs() {
+        StringBuilder out=new StringBuilder();
+        synchronized(logs) { for(String row:logs) out.append(row).append('\n'); }
+        return out.length()==0?"尚无":out.toString();
+    }
     String report() {
-        return "Ling 随机气泡 0.1.1-experimental\nQQ："+qqVersion+"\n版本门控："+(versionSupported?"匹配目标":"不匹配，禁止修改")
+        return "Ling 随机气泡 0.1.12-experimental\nQQ："+qqVersion+"\n账号："+bridge.libraryMask()+"\n版本门控："+(versionSupported?"匹配目标":"版本不同，仍尝试发送")
             +"\n发送接口："+sendInstalled+"\n转发回避接口："+forwardInstalled+"\n原消息识别接口："+recordInstalled
+            +"\n收藏菜单："+menuInstalled+" 注入次数："+menuInjected+"\nQQ设置入口："+settingInstalled
             +"\n发送按钮观察："+tapInstalled+"\n配置桥接："+bridgeHealthy
             +"\n\n有效发送点击："+arms.get()+"\n已替换发送参数："+applied.get()
             +"\n复读/转发/原对象跳过："+skipRepeat.get()+"\n未知来源调用栈跳过："+skipUnknownSource.get()+"\n无匹配点击跳过："+skipNoPermit.get()
             +"\n非普通文字/聊天类型跳过："+skipType.get()+"\n开关/适配条件不满足："+skipDisabled.get()
             +"\n原消息访问次数："+recordsSeen.get()+"\n属性处理异常："+errors.get()+"\n读取到气泡模板次数："+observations.get()
             +"\n最近诊断："+error+"\n\n最近未知来源类/方法（无参数）：\n"+lastUnknownFrames
+            +"\n\n运行日志（不含正文）：\n"+dumpLogs()
             +"\n\n“已替换发送参数”不代表服务器已接受，更不代表对方已看到。\n仅统计计数和接口状态；不记录正文、QQ号、群号或令牌。";
     }
 }

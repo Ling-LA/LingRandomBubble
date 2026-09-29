@@ -25,11 +25,20 @@ public final class ConfigProvider extends ContentProvider {
         authorize();
         if(!"sync".equals(method)) throw new IllegalArgumentException("Unknown method");
         Repository repo=Repository.get(getContext());
+        String favoriteStatus=null;
         if(extras!=null) {
+            repo.useAccount(extras.getString("account"));
+            String favorite=extras.getString("favorite");
+            if(favorite!=null) {
+                try { favoriteStatus=repo.favorite(favorite); }
+                catch(JSONException e) { favoriteStatus=e.getMessage()==null?"气泡数据无效":e.getMessage(); }
+            }
             try { repo.observe(extras.getString("candidates")); } catch(JSONException ignored) { /* reject malformed batch */ }
             repo.diagnostics(extras.getString("diagnostics"));
         }
-        Bundle reply=new Bundle(); reply.putString("config",repo.snapshot().toString()); return reply;
+        Bundle reply=new Bundle(); reply.putString("config",repo.snapshot().toString());
+        if(favoriteStatus!=null) reply.putString("favoriteStatus",favoriteStatus);
+        return reply;
     }
     @Override public Cursor query(Uri u,String[] p,String s,String[] a,String sort) { authorize(); throw new UnsupportedOperationException(); }
     @Override public String getType(Uri u) { authorize(); return "application/json"; }

@@ -31,7 +31,7 @@ import org.json.JSONObject;
 
 /** Native, standalone settings. No widgets or long-press entries are inserted into QQ. */
 public final class MainActivity extends Activity {
-    private static final int EXPORT=1,IMPORT=2;
+    private static final int EXPORT=1,IMPORT=2,EXPORT_LOG=3;
     private Repository repo;
     private LinearLayout content;
     private ScrollView scroll;
@@ -77,26 +77,27 @@ public final class MainActivity extends Activity {
         });
         scroll.requestApplyInsets();
         text("Ling 随机气泡",28,true);
-        text("0.1.1 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行",14,false);
-        text("此版本需要在 NPatch 中加载到 QQ。安装本应用并不表示已经激活。所有气泡效果均需在另一台未装模块的 QQ 上验证。",14,false);
+        text("0.1.12 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
+        text("在 QQ 里长按别人的消息，点「收藏气泡」。之后自己点发送，会把收藏的气泡参数写进这条新消息。请用另一台 QQ 确认对方能看到。",14,false);
         JSONObject j=repo.snapshot();
         section("开关");
-        toggle(j,"enabled","启用发送气泡","只处理点发送按钮的新普通文字消息；不处理键盘回车、自动回复、复读或转发。");
-        toggle(j,"collect","采集访问到的气泡","仅保存气泡编号及必要属性。先打开对话滚动几条消息，再回此面板刷新。新采集项默认不勾选。");
+        toggle(j,"enabled","启用发送气泡","收藏后会自动打开。只处理点发送按钮的新普通文字；不处理键盘回车、自动回复、复读或转发。");
+        toggle(j,"collect","浏览时也采集","可选。打开后滚动到有气泡的消息会入库，但默认不参与发送。长按菜单的「收藏气泡」会直接参与发送。");
         toggle(j,"fixed","固定模式","开启：使用列表中第一个勾选项。关闭：从所有勾选项随机选择。");
         toggle(j,"avoidRepeat","避免连续重复","随机模式下至少勾选两种不同气泡才有意义；只影响本次进程中的正常新消息。");
         toggle(j,"groups","用于群聊","仍需正常点击发送；QFun 的 +1 原样放行。");
         toggle(j,"privateChats","用于好友私聊","陌生人临时会话、频道等不在首版范围。");
         section("气泡库");
-        text("勾选参与随机的气泡。长按库内条目可改名或删除。本模块不改动 QQ 的消息长按菜单，也不触碰 +1 按钮。气泡列表不提供远端资源预览。",14,false);
+        text("勾选参与随机的气泡。关闭固定模式时，每条新消息从勾选项里随机，并尽量不连续重复。长按库内条目可改名或删除。不修改 QFun 的 +1。",14,false);
         button("刷新气泡库与状态",this::render);
         try {
             JSONArray a=j.getJSONArray("bubbles");
             text(a.length()+" / "+JsonCodec.MAX_LIBRARY+" 个气泡",13,false);
-            if(a.length()==0) text("暂无气泡。先打开上面的采集开关，然后到 QQ 中浏览有气泡的消息。",15,false);
+            if(a.length()==0) text("暂无气泡。到 QQ 长按一条有气泡的消息，点「收藏气泡」。",15,false);
             for(int i=0;i<a.length();i++) addBubbleRow(a.getJSONObject(i));
         } catch(Exception e) { text("读取气泡库失败："+e.getClass().getSimpleName(),14,false); }
         section("备份与诊断");
+        text("运行日志保存在手机的 Download/LingRandomBubble-log.txt。打开 QQ 时不再弹出提示。也可以点下面的按钮导出。",14,false);
         button("导出气泡库 JSON",() -> {
             Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                     .setType("application/json").putExtra(Intent.EXTRA_TITLE,"LingRandomBubble-library.json");
@@ -107,6 +108,11 @@ public final class MainActivity extends Activity {
             startActivityForResult(intent,IMPORT);
         });
         button("查看 / 复制诊断",this::showDiagnostics);
+        button("导出运行日志",() -> {
+            Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+                    .setType("text/plain").putExtra(Intent.EXTRA_TITLE,"LingRandomBubble-log.txt");
+            startActivityForResult(intent,EXPORT_LOG);
+        });
         button("清空气泡库并关闭功能",() -> new AlertDialog.Builder(this).setTitle("清空气泡库？")
                 .setMessage("将关闭发送及采集开关。不会删除 QQ 的消息，也不会修改 QFun 配置。")
                 .setNegativeButton("取消",null).setPositiveButton("清空",(d,w)->execute(()->{repo.clearLibrary();render();})).show());
@@ -147,18 +153,18 @@ public final class MainActivity extends Activity {
         super.onActivityResult(request,result,data);
         if(result!=RESULT_OK || data==null || data.getData()==null) return;
         Uri uri=data.getData();
-        if(request!=EXPORT && request!=IMPORT) return;
+        if(request!=EXPORT && request!=IMPORT && request!=EXPORT_LOG) return;
         // Document providers may be slow: never block the UI during file IO.
         new Thread(()->{
             try {
                 String message;
-                if(request==EXPORT) {
-                    String json=repo.exportLibrary();
+                if(request==EXPORT || request==EXPORT_LOG) {
+                    String body=request==EXPORT?repo.exportLibrary():"Ling 随机气泡 0.1.12 运行日志\n不含聊天正文、QQ号或群号。\n\n"+repo.diagnostics();
                     try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")) {
                         if(out==null) throw new IllegalStateException("无法打开输出文件");
-                        out.write(json.getBytes(StandardCharsets.UTF_8));
+                        out.write(body.getBytes(StandardCharsets.UTF_8));
                     }
-                    message="已导出气泡库";
+                    message=request==EXPORT?"已导出气泡库":"已导出运行日志";
                 } else {
                     String json;
                     try(InputStream in=getContentResolver().openInputStream(uri); ByteArrayOutputStream out=new ByteArrayOutputStream()) {

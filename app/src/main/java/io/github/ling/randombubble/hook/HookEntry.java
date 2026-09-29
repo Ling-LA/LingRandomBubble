@@ -12,6 +12,7 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
+import io.github.ling.randombubble.core.BubbleSpec;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,6 +26,8 @@ public final class HookEntry implements IXposedHookLoadPackage {
     private final Set<Method> installed=new HashSet<>();
     private HostRuntime runtime;
     private UiTapGate taps;
+    private MenuCollector menu;
+    private SettingInject settings;
     private ClassLoader loader;
     private int attempts;
     @Override public void handleLoadPackage(XC_LoadPackage.LoadPackageParam p) throws Throwable {
@@ -73,13 +76,24 @@ public final class HookEntry implements IXposedHookLoadPackage {
             return;
         }
         started=true;
-        loader=candidate; runtime=new HostRuntime(context,loader);
-        taps=new UiTapGate(runtime);
-        XposedBridge.log("[LingBubble] initialize QQ="+runtime.qqVersion+" targetMatched="+runtime.versionSupported);
-        installTapObserver(); attemptHooks(); runtime.bridge.start();
+        try {
+            loader=candidate; runtime=new HostRuntime(context,loader);
+            taps=new UiTapGate(runtime); menu=new MenuCollector(runtime,loader); settings=new SettingInject(runtime,loader);
+            installOwnBubble();
+            XposedBridge.log("[LingBubble] initialize QQ="+runtime.qqVersion+" targetMatched="+runtime.versionSupported);
+            installTapObserver();
+            runtime.bridge.start();
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try { attemptHooks(); runtime.bridge.loadAccount(); }
+                catch(Throwable ignored) { XposedBridge.log("[LingBubble] delayed init failed"); }
+            },3000);
+        } catch(Throwable e) {
+            XposedBridge.log("[LingBubble] init aborted: "+e.getClass().getSimpleName());
+            return;
+        }
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             @Override public void onActivityResumed(Activity a) { attemptHooks(); }
-            @Override public void onActivityPaused(Activity a) { runtime.permit.clear(); taps.reset(); }
+            @Override public void onActivityPaused(Activity a) { if(runtime!=null){ runtime.permit.clear(); taps.reset(); } }
             @Override public void onActivityCreated(Activity a,Bundle b) {}
             @Override public void onActivityStarted(Activity a) {}
             @Override public void onActivityStopped(Activity a) {}
@@ -99,20 +113,56 @@ public final class HookEntry implements IXposedHookLoadPackage {
             runtime.tapInstalled=true;
         } catch(Throwable e) { runtime.setError("发送按钮接口："+e.getClass().getSimpleName()); }
     }
+    private void installOwnBubble() {
+        try {
+            Class<?> svip=Class.forName("com.tencent.mobileqq.app.SVIPHandler",false,loader);
+            int hooked=0;
+            for(Method method:svip.getDeclaredMethods()) {
+                String name=method.getName().toLowerCase(java.util.Locale.ROOT);
+                if(method.getReturnType()!=int.class || !name.contains("bubbleid")) continue;
+                boolean sub=name.contains("sub");
+                XposedBridge.hookMethod(method,new XC_MethodHook() {
+                    @Override protected void beforeHookedMethod(MethodHookParam param) {
+                        BubbleSpec spec=runtime.currentBubble();
+                        if(spec==null) return;
+                        Integer value=sub?spec.subBubbleId:spec.bubbleId;
+                        if(value!=null && value>0) param.setResult(value);
+                    }
+                });
+                hooked++;
+            }
+            runtime.log(hooked==0?"没有找到自己的气泡接口":"已挂上自己的气泡接口 "+hooked);
+        } catch(Throwable e) { runtime.log("自己的气泡接口失败 "+e.getClass().getSimpleName()); }
+    }
+    private void installMenu() {
+        if(runtime.menuInstalled) return;
+        try { runtime.menuInstalled=menu.install(); }
+        catch(Throwable e) { runtime.setError("消息菜单："+e.getClass().getSimpleName()); }
+    }
+    private void installSettings() {
+        if(runtime.settingInstalled && settings!=null) return;
+        try { settings.install(); }
+        catch(Throwable e) { runtime.setError("QQ设置入口："+e.getClass().getSimpleName()); }
+    }
     private synchronized void attemptHooks() {
-        if(runtime==null || (runtime.sendInstalled && runtime.forwardInstalled && runtime.recordInstalled) || ++attempts>16) return;
+        if(runtime==null || ++attempts>24) return;
+        installMenu();
+        installSettings();
+        if(runtime.sendInstalled && runtime.forwardInstalled && runtime.recordInstalled && runtime.menuInstalled) attempts=100;
         try {
             Class<?> service=Class.forName("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy",false,loader);
             for(Method m:service.getDeclaredMethods()) {
                 Class<?>[] t=m.getParameterTypes();
+                boolean mapArg=t.length>3 && java.util.Map.class.isAssignableFrom(t[3]);
+                boolean listArg=t.length>2 && java.util.List.class.isAssignableFrom(t[2]);
                 if(m.getName().equals("sendMsg") && t.length==5 && t[0]==long.class
                         && t[1].getSimpleName().equals("Contact")
-                        && t[2]==java.util.ArrayList.class && t[3]==java.util.HashMap.class && !installed.contains(m)) {
+                        && listArg && mapArg && !installed.contains(m)) {
+                    final int mapIndex=3;
                     XposedBridge.hookMethod(m,new XC_MethodHook(XC_MethodHook.PRIORITY_LOWEST) {
                         @Override protected void beforeHookedMethod(MethodHookParam p) {
-                            // Run last among before-hooks, so changes from earlier text preprocessors are checked.
                             HashMap<Object,Object> replacement=runtime.prepare(p.args,Thread.currentThread().getStackTrace());
-                            if(replacement!=null) p.args[3]=replacement;
+                            if(replacement!=null) p.args[mapIndex]=replacement;
                         }
                     });
                     installed.add(m); runtime.sendInstalled=true;

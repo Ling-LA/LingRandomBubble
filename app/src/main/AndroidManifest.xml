@@ -3,7 +3,7 @@
     <queries><package android:name="com.tencent.mobileqq" /></queries>
     <!-- No INTERNET, storage, accessibility, overlay, or root permissions. -->
     <application android:allowBackup="false" android:label="Ling 随机气泡"
-        android:icon="@android:drawable/ic_dialog_email"
+        android:icon="@drawable/ic_module"
         android:theme="@style/AppTheme" android:supportsRtl="true">
         <activity android:name=".ui.MainActivity" android:exported="true">
             <intent-filter>
