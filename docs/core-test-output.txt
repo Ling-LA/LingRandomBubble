@@ -1,0 +1,54 @@
+warning: [options] source value 8 is obsolete and will be removed in a future release
+warning: [options] target value 8 is obsolete and will be removed in a future release
+warning: [options] To suppress warnings about obsolete options, use -Xlint:-options.
+3 warnings
+PASS permit requires a physical arm
+PASS permit matches exact text once
+PASS permit rejects mismatched text and clears
+PASS permit expires
+PASS permit boundary accepted
+PASS permit rejects backward clock
+PASS permit clear prevents stale use
+PASS blank/null/oversized input never arms
+PASS two concurrent sends cannot consume same permit
+PASS identity set rejects equal-but-different lists
+PASS identity set null safe
+PASS QFun directSend call stack blocked
+PASS QFun script send blocked
+PASS forward stack blocked
+PASS follow/repeater stack blocked
+PASS native composer stack allowed by deny check
+PASS unknown async source rejected even with matching click
+PASS unknown source consumes stale pending permit
+PASS missing stack fails closed
+PASS normal fresh plain text produces replacement
+PASS QFun direct send denied even with matching pending tap
+PASS forward nesting denied even with matching pending tap
+PASS original elements list blocks obfuscated repeater
+PASS original attribute map blocks repeater
+PASS copied list with original elements still blocked
+PASS script/background send without tap remains unchanged
+PASS altered text preprocessing safely skipped
+PASS disabled policy clears pending permit
+PASS unsupported chat type skipped
+PASS mentions skipped
+PASS mixed/photo/voice/reply elements skipped
+PASS failed reflection preserves original args
+PASS null argument array safe
+PASS empty bubble pool safe
+PASS copy-on-write retains original bubble and attributes
+PASS other map entries preserve identity
+PASS null map uses learned attribute metadata
+PASS conflicting VAS key rejects without mutation
+PASS attribute type mismatch rejects
+PASS extract contains metadata only
+PASS default/malformed templates ignored
+PASS negative bubble IDs rejected
+PASS nullable fields preserved
+PASS fixed picker picks first selected
+PASS random picker never immediately repeats with two entries
+PASS one-item random pool valid
+PASS policy never changes message ID/contact/elements/callback
+PASS second send after same click stays unmodified
+
+RESULT: 48 test groups passed. These are policy/fixture tests, NOT Android builds or QQ device tests.

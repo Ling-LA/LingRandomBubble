@@ -1,0 +1,16 @@
+Ling 随机气泡 0.1.0 实验版 — 源码交付
+
+这不是 APK，也不是 QFun 脚本。请不要直接安装或改后缀。
+
+已完成：独立模块工程、配置面板、气泡库、严格复读回避、48 组核心测试。
+未完成验证：Android 编译 / APK 签名 / QQ + NPatch 真机 / 对方是否看到气泡。
+
+电脑构建：准备 JDK 17/21 + Android SDK API 35 + Build-Tools 35.0.0，
+然后双击 Build-Windows.cmd。首次需要联网下载构建依赖。
+成功后 APK 才会生成于 out/LingRandomBubble-0.1.0-debug.apk。
+
+也提供手动触发的 GitHub Actions 构建流程；本次没有上传到你的仓库。
+
+请先阅读 README.md。详细验证范围和真机验收在 docs 目录。
+与 QFun 并行加载到 QQ，不修改 QFun 安装包，不修改 +1 点击监听。
+保留你此前正常工作的“注入加载器 Dex”关闭状态，不要卸载 QQ。

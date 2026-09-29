@@ -1,0 +1,1 @@
+PASS: JDK parser accepted all 17 production Java files. Parse only; no Android SDK type check.
