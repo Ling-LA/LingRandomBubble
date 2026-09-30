@@ -55,7 +55,9 @@ public final class CoreSelfTest {
         test("identity set rejects equal-but-different lists",()->{IdentityWeakSet s=new IdentityWeakSet();List<String>a=new ArrayList<>(),b=new ArrayList<>();s.add(a);ok(s.contains(a));ok(!s.contains(b));});
         test("identity set null safe",()->{IdentityWeakSet s=new IdentityWeakSet();s.add(null);ok(!s.contains(null));eq(s.size(),0);});
         test("QFun directSend call stack blocked",()->ok(OriginGuard.deniedStack(frame("me.yxp.qfun.hook.chat.RepeatMsg","directSend"))));
-        test("QFun script send blocked",()->ok(OriginGuard.deniedStack(frame("me.yxp.qfun.plugin.api.PluginMethod","sendMsg"))));
+        test("QFun send hook is not a repeat",()->ok(!OriginGuard.deniedStack(frame("me.yxp.qfun.hook.msg.OnSendMsg","beforeHookedMethod"))));
+        test("QFun script send is not a repeat",()->ok(!OriginGuard.deniedStack(frame("me.yxp.qfun.plugin.api.PluginMethod","sendMsg"))));
+        test("normal send still applies when QFun is on the stack",()->{Env e=new Env();eq(e.run(args("hi",null),new StackTraceElement[]{new StackTraceElement("me.yxp.qfun.hook.msg.OnSendMsg","beforeHookedMethod","x",1),new StackTraceElement("com.tencent.qqnt.kernel.nativeinterface.IKernelMsgService$CppProxy","sendMsg","x",1)},0).reason,SendPolicy.Reason.APPLIED);});
         test("forward stack blocked",()->ok(OriginGuard.deniedStack(frame("com.tencent.qqnt.kernel.SomeClass","forwardMsg"))));
         test("follow/repeater stack blocked",()->ok(OriginGuard.deniedStack(frame("com.tencent.mobileqq.aio.msgfollow.Follow","run"))));
         test("native composer stack allowed by deny check",()->ok(!OriginGuard.deniedStack(NORMAL)));
@@ -66,7 +68,7 @@ public final class CoreSelfTest {
         test("QFun direct send denied even with matching pending tap",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),frame("me.yxp.qfun.hook.chat.RepeatMsg","directSend"),0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
         test("forward nesting denied even with matching pending tap",()->{Env e=new Env();e.permit.arm("hi",1000);eq(e.run(args("hi",null),NORMAL,1).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
         test("original elements list blocks obfuscated repeater",()->{Env e=new Env();Object[]a=args("hi",null);e.originals.add(a[2]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
-        test("original attribute map blocks repeater",()->{Env e=new Env();Object[]a=args("hi",map(attribute()));e.originals.add(a[3]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
+        test("reused attribute map still applies",()->{Env e=new Env();Object[]a=args("hi",map(attribute()));e.originals.add(a[3]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.APPLIED);});
         test("copied list with original elements still blocked",()->{Env e=new Env();Object[]a=args("hi",null);Object el=((List<?>)a[2]).get(0);e.originals.add(el);a[2]=new ArrayList<>((List<?>)a[2]);e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.ORIGINAL_OR_REPEAT);});
         test("ordinary send without a tap is applied",()->{Env e=new Env();eq(e.run(args("hi",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);});
         test("another plain text is also applied",()->{Env e=new Env();eq(e.run(args("modified hi",null),NORMAL,0).reason,SendPolicy.Reason.APPLIED);});
@@ -95,6 +97,7 @@ public final class CoreSelfTest {
         test("negative bubble IDs rejected",()->{try{new BubbleSpec(1,1,0,-1,2,null,0);throw new AssertionError();}catch(IllegalArgumentException expected){}});
         test("nullable fields preserved",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo x=(MsgAttributeInfo)a.withBubble(null,A).get(17);ok(x.vasMsgInfo.bubbleInfo.bubbleDiyTextId==null);});
         test("fixed picker picks first selected",()->eq(new BubblePicker(new Random(1)).choose(Arrays.asList(A,B),true,true),A));
+        test("hold reuses one style inside the window",()->{BubblePicker p=new BubblePicker(new Random(1));BubbleSpec first=p.choose(Arrays.asList(A,B),false,true);p.hold(first,1000);eq(p.held(1200,400),first);ok(p.held(2000,400)==null);});
         test("random picker never immediately repeats with two entries",()->{BubblePicker p=new BubblePicker(new Random(1));BubbleSpec last=null;for(int i=0;i<500;i++){BubbleSpec n=p.choose(Arrays.asList(A,B),false,true);ok(!n.equals(last));p.commit(n);last=n;}});
         test("one-item random pool valid",()->{BubblePicker p=new BubblePicker();p.commit(A);eq(p.choose(Arrays.asList(A),false,true),A);});
         test("policy never changes message ID/contact/elements/callback",()->{Env e=new Env();Object[]a=args("hi",null);Object[]copy=a.clone();e.permit.arm("hi",1000);eq(e.run(a,NORMAL,0).reason,SendPolicy.Reason.APPLIED);for(int i=0;i<5;i++)ok(a[i]==copy[i]);});

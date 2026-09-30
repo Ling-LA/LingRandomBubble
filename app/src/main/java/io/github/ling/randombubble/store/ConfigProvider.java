@@ -34,6 +34,7 @@ public final class ConfigProvider extends ContentProvider {
                 catch(JSONException e) { favoriteStatus=e.getMessage()==null?"气泡数据无效":e.getMessage(); }
             }
             try { repo.observe(extras.getString("candidates")); } catch(JSONException ignored) { /* reject malformed batch */ }
+            try { repo.importHost(extras.getString("library")); } catch(JSONException ignored) { /* keep the module copy */ }
             repo.diagnostics(extras.getString("diagnostics"));
         }
         Bundle reply=new Bundle(); reply.putString("config",repo.snapshot().toString());

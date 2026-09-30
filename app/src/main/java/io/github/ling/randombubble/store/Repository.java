@@ -93,11 +93,31 @@ public final class Repository {
         for(int i=0;i<a.length();i++) if(JsonCodec.decode(a.getJSONObject(i)).key().equals(b.key())) {
             a.getJSONObject(i).put("selected",true); found=true; break;
         }
-        if(!found) {
-            if(a.length()>=JsonCodec.MAX_LIBRARY) throw new JSONException("气泡库已满");
-            a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true));
-        }
+        if(!found) a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true));
         j.put("enabled",true); save(j); return found ? "selected" : "added";
+    }
+    /** Adds bubbles saved by the QQ process without removing ones edited in this app. */
+    public synchronized int importHost(String raw) throws JSONException {
+        if(raw==null || raw.length()>JsonCodec.MAX_JSON_CHARS) return 0;
+        JSONObject incoming=JsonCodec.object(raw);
+        JSONArray extra=incoming.getJSONArray("bubbles");
+        if(extra.length()==0) return 0;
+        JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles");
+        Set<String> known=new HashSet<>();
+        for(int i=0;i<a.length();i++) known.add(JsonCodec.decode(a.getJSONObject(i)).key());
+        int added=0;
+        for(int i=0;i<extra.length();i++) {
+            JSONObject row=extra.getJSONObject(i);
+            BubbleSpec b=JsonCodec.decode(row);
+            if(known.add(b.key())) {
+                String name=row.optString("name",b.label());
+                if(name.length()>48) name=name.substring(0,48);
+                a.put(JsonCodec.encode(b).put("name",name).put("selected",row.optBoolean("selected",true)));
+                added++;
+            }
+        }
+        if(added>0) { j.put("enabled",true); save(j); }
+        return added;
     }
     /** Host suggestions cannot enable features or select a bubble. */
     public synchronized void observe(String encoded) throws JSONException {
@@ -108,7 +128,7 @@ public final class Repository {
         Set<String> known=new HashSet<>();
         for(int i=0;i<a.length();i++) known.add(JsonCodec.decode(a.getJSONObject(i)).key());
         boolean changed=false;
-        for(int i=0;i<incoming.length() && a.length()<JsonCodec.MAX_LIBRARY;i++) {
+        for(int i=0;i<incoming.length();i++) {
             BubbleSpec b=JsonCodec.decode(incoming.getJSONObject(i));
             if(known.add(b.key())) {
                 a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true)); changed=true;
@@ -130,14 +150,12 @@ public final class Repository {
         if(input.optInt("schema",0)!=1 || !input.optString("format","").equals("LingRandomBubble-library"))
             throw new JSONException("不是本模块的 schema=1 气泡库");
         JSONArray incoming=input.getJSONArray("bubbles");
-        if(incoming.length()>JsonCodec.MAX_LIBRARY) throw new JSONException("气泡数超出 128");
         JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles"); Set<String> ids=new HashSet<>();
         for(int i=0;i<a.length();i++) ids.add(JsonCodec.decode(a.getJSONObject(i)).key());
         int added=0;
         for(int i=0;i<incoming.length();i++) {
             JSONObject row=incoming.getJSONObject(i); BubbleSpec b=JsonCodec.decode(row);
             if(ids.add(b.key())) {
-                if(a.length()>=JsonCodec.MAX_LIBRARY) throw new JSONException("合并后超过 128 个气泡，未导入");
                 String name=row.optString("name",b.label());
                 if(name.length()>48) name=name.substring(0,48);
                 a.put(JsonCodec.encode(b).put("name",name).put("selected",true)); added++;

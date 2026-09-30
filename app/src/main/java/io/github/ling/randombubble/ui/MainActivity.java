@@ -77,7 +77,7 @@ public final class MainActivity extends Activity {
         });
         scroll.requestApplyInsets();
         text("Ling 随机气泡",28,true);
-        text("0.1.12 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
+        text("0.1.19 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
         text("在 QQ 里长按别人的消息，点「收藏气泡」。之后自己点发送，会把收藏的气泡参数写进这条新消息。请用另一台 QQ 确认对方能看到。",14,false);
         JSONObject j=repo.snapshot();
         section("开关");
@@ -92,7 +92,7 @@ public final class MainActivity extends Activity {
         button("刷新气泡库与状态",this::render);
         try {
             JSONArray a=j.getJSONArray("bubbles");
-            text(a.length()+" / "+JsonCodec.MAX_LIBRARY+" 个气泡",13,false);
+            text(a.length()+" 个气泡",13,false);
             if(a.length()==0) text("暂无气泡。到 QQ 长按一条有气泡的消息，点「收藏气泡」。",15,false);
             for(int i=0;i<a.length();i++) addBubbleRow(a.getJSONObject(i));
         } catch(Exception e) { text("读取气泡库失败："+e.getClass().getSimpleName(),14,false); }
@@ -159,7 +159,7 @@ public final class MainActivity extends Activity {
             try {
                 String message;
                 if(request==EXPORT || request==EXPORT_LOG) {
-                    String body=request==EXPORT?repo.exportLibrary():"Ling 随机气泡 0.1.12 运行日志\n不含聊天正文、QQ号或群号。\n\n"+repo.diagnostics();
+                    String body=request==EXPORT?repo.exportLibrary():"Ling 随机气泡 0.1.19 运行日志\n不含聊天正文、QQ号或群号。\n\n"+repo.diagnostics();
                     try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")) {
                         if(out==null) throw new IllegalStateException("无法打开输出文件");
                         out.write(body.getBytes(StandardCharsets.UTF_8));

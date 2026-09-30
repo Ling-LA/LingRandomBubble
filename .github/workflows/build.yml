@@ -25,13 +25,13 @@ jobs:
       - name: Prepare artifacts
         run: |
           mkdir -p out/apk
-          cp app/build/outputs/apk/debug/app-debug.apk out/apk/LingRandomBubble-0.1.12-debug.apk
+          cp app/build/outputs/apk/debug/app-debug.apk out/apk/LingRandomBubble-0.1.19-debug.apk
           cp README.md out/apk/README.md
           cd out/apk
           sha256sum *.apk > SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: LingRandomBubble-0.1.12-experimental
+          name: LingRandomBubble-0.1.19-experimental
           path: out/apk/
           if-no-files-found: error
           retention-days: 14

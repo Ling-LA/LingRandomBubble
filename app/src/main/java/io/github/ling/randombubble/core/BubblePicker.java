@@ -9,8 +9,11 @@ import java.util.Random;
 
 /** One visual style per send. Same bubble id counts as a repeat even if the saved metadata differs. */
 public final class BubblePicker {
+    public static final long HOLD_MS=400;
     private final Random random;
     private String lastVisual;
+    private BubbleSpec held;
+    private long heldAt=Long.MIN_VALUE;
     public BubblePicker() { this(new SecureRandom()); }
     public BubblePicker(Random random) { this.random = random; }
     public static String visual(BubbleSpec b) { return b.bubbleId + ":" + b.subBubbleId; }
@@ -31,4 +34,15 @@ public final class BubblePicker {
         return options.get(random.nextInt(options.size()));
     }
     public synchronized void commit(BubbleSpec b) { if (b != null) lastVisual = visual(b); }
+    /** Getter and sendMsg within one message must share one style. */
+    public synchronized BubbleSpec held(long now, long windowMs) {
+        if (held != null && now >= heldAt && now - heldAt <= windowMs) return held;
+        return null;
+    }
+    public synchronized void hold(BubbleSpec b, long now) {
+        if (b == null) return;
+        held = b;
+        heldAt = now;
+        lastVisual = visual(b);
+    }
 }

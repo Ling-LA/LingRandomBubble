@@ -79,6 +79,8 @@ public final class HookEntry implements IXposedHookLoadPackage {
         try {
             loader=candidate; runtime=new HostRuntime(context,loader);
             taps=new UiTapGate(runtime); menu=new MenuCollector(runtime,loader); settings=new SettingInject(runtime,loader);
+            try { settings.install(); }
+            catch(Throwable e) { runtime.log("设置入口初始化失败 "+e.getClass().getSimpleName()); }
             installOwnBubble();
             XposedBridge.log("[LingBubble] initialize QQ="+runtime.qqVersion+" targetMatched="+runtime.versionSupported);
             installTapObserver();
@@ -92,7 +94,7 @@ public final class HookEntry implements IXposedHookLoadPackage {
             return;
         }
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
-            @Override public void onActivityResumed(Activity a) { attemptHooks(); }
+            @Override public void onActivityResumed(Activity a) { if(runtime!=null) runtime.resumed(a); attemptHooks(); }
             @Override public void onActivityPaused(Activity a) { if(runtime!=null){ runtime.permit.clear(); taps.reset(); } }
             @Override public void onActivityCreated(Activity a,Bundle b) {}
             @Override public void onActivityStarted(Activity a) {}
@@ -123,6 +125,7 @@ public final class HookEntry implements IXposedHookLoadPackage {
                 boolean sub=name.contains("sub");
                 XposedBridge.hookMethod(method,new XC_MethodHook() {
                     @Override protected void beforeHookedMethod(MethodHookParam param) {
+                        probeEquipped(param,sub);
                         BubbleSpec spec=runtime.currentBubble();
                         if(spec==null) return;
                         Integer value=sub?spec.subBubbleId:spec.bubbleId;
@@ -133,6 +136,18 @@ public final class HookEntry implements IXposedHookLoadPackage {
             }
             runtime.log(hooked==0?"没有找到自己的气泡接口":"已挂上自己的气泡接口 "+hooked);
         } catch(Throwable e) { runtime.log("自己的气泡接口失败 "+e.getClass().getSimpleName()); }
+    }
+    private final long[] lastProbe=new long[2];
+    /** The account's real bubble, read past our own hook at most every two seconds. */
+    private void probeEquipped(XC_MethodHook.MethodHookParam param,boolean sub) {
+        int slot=sub?1:0;
+        long now=android.os.SystemClock.uptimeMillis();
+        if(now-lastProbe[slot]<2000) return;
+        lastProbe[slot]=now;
+        try {
+            Object value=XposedBridge.invokeOriginalMethod(param.method,param.thisObject,param.args);
+            if(value instanceof Integer) runtime.equipped(sub,(Integer)value);
+        } catch(Throwable ignored) { /* diagnostics only */ }
     }
     private void installMenu() {
         if(runtime.menuInstalled) return;

@@ -10,6 +10,8 @@ import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import de.robv.android.xposed.XC_MethodHook;
@@ -32,46 +34,157 @@ final class SettingInject {
     static final String TITLE="Ling 随机气泡";
     private final HostRuntime runtime;
     private final ClassLoader loader;
+    private final Set<Class<?>> hookedProviders=new HashSet<>();
     private Class<?> itemClass;
     private boolean hooked;
+    private boolean watchingLoads;
+    private XC_MethodHook listHook;
+    private Class<?> providerBase;
+    private boolean providerBaseMissing;
+    private int callbackLogs;
+    private Class<?> groupClass;
+    private boolean groupHooked;
+    /** True once a settings page came and went without anyone adding a 模块 group. */
+    private volatile boolean standalone;
+    private java.lang.ref.WeakReference<Context> lastContext=new java.lang.ref.WeakReference<>(null);
     SettingInject(HostRuntime runtime,ClassLoader loader) { this.runtime=runtime; this.loader=loader; }
     boolean install() {
+        if(!watchingLoads) watchLoads();
         if(hooked) return true;
-        List<Class<?>> providers=findProviders();
-        XC_MethodHook hook=new XC_MethodHook(XC_MethodHook.PRIORITY_LOWEST) {
+        int count=attach(findProviders());
+        hooked=true;
+        runtime.log(count>0?"QQ设置钩子 "+count+" 个":"设置类上没有可用列表方法");
+        return count>0;
+    }
+    private void watchLoads() {
+        watchingLoads=true;
+        XC_MethodHook watch=new XC_MethodHook() {
+            @Override protected void afterHookedMethod(MethodHookParam param) {
+                if(!(param.getResult() instanceof Class)) return;
+                Class<?> type=(Class<?>)param.getResult();
+                String name=type.getName();
+                if(!name.startsWith("com.tencent.mobileqq.setting.")) return;
+                if(hookedProviders.contains(type)) return;
+                if(concreteProvider(type) || looksLikeItem(type)) considerLoaded(type);
+            }
+        };
+        try { XposedBridge.hookAllMethods(ClassLoader.class,"loadClass",watch); }
+        catch(Throwable e) { runtime.log("监听设置类加载失败 "+e.getClass().getSimpleName()); }
+    }
+    private void considerLoaded(Class<?> type) {
+        if(hookedProviders.contains(type)) return;
+        if(looksLikeItem(type) && itemClass==null) itemClass=type;
+        runtime.log("加载设置类 "+type.getSimpleName());
+        List<Class<?>> one=new ArrayList<>();
+        one.add(type);
+        int added=attach(one);
+        if(added>0) runtime.log("QQ设置钩子 +"+added);
+    }
+    private int attach(List<Class<?>> providers) {
+        XC_MethodHook hook=listHook();
+        int count=0;
+        for(Class<?> provider:providers) {
+            if(provider==null || !hookedProviders.add(provider)) continue;
+            for(Class<?> type=provider; type!=null && type!=Object.class; type=type.getSuperclass()) {
+                for(Method method:type.getDeclaredMethods()) {
+                    if(Modifier.isAbstract(method.getModifiers())) continue;
+                    if(!List.class.isAssignableFrom(method.getReturnType()) || method.getParameterTypes().length>3) continue;
+                    boolean hasContext=false;
+                    for(Class<?> param:method.getParameterTypes()) if(Context.class.isAssignableFrom(param)) hasContext=true;
+                    if(!hasContext) continue;
+                    try { XposedBridge.hookMethod(method,hook); count++; }
+                    catch(Throwable e) { hookFailure(method,e); }
+                }
+            }
+        }
+        return count;
+    }
+    private XC_MethodHook listHook() {
+        if(listHook!=null) return listHook;
+        listHook=new XC_MethodHook(XC_MethodHook.PRIORITY_HIGHEST) {
             @Override protected void afterHookedMethod(MethodHookParam param) {
                 if(!(param.getResult() instanceof List) || param.args==null) return;
                 Context context=null;
                 for(Object arg:param.args) if(arg instanceof Context) context=(Context)arg;
                 if(context==null) return;
-                try { insert(context,(List<?>)param.getResult()); }
-                catch(Throwable e) { runtime.setError("QQ设置入口："+e.getClass().getSimpleName()); runtime.log("设置入口失败 "+e.getClass().getSimpleName()); }
+                if(callbackLogs<6) {
+                    callbackLogs++;
+                    runtime.log("设置回调 "+param.method.getDeclaringClass().getSimpleName()+"."+param.method.getName());
+                }
+                lastContext=new java.lang.ref.WeakReference<>(context);
+                List<?> result=(List<?>)param.getResult();
+                try {
+                    if(!result.isEmpty() && result.get(0)!=null) hookGroup(result.get(0).getClass());
+                    insert(context,result);
+                } catch(Throwable e) { runtime.log("设置入口失败 "+e.getClass().getSimpleName()); }
             }
         };
-        int count=0;
-        for(Class<?> provider:providers) {
-            for(Class<?> type=provider; type!=null && type!=Object.class; type=type.getSuperclass()) {
-                for(Method method:type.getDeclaredMethods()) {
-                    if(!List.class.isAssignableFrom(method.getReturnType()) || method.getParameterTypes().length>3) continue;
-                    boolean hasContext=false;
-                    for(Class<?> param:method.getParameterTypes()) if(Context.class.isAssignableFrom(param)) hasContext=true;
-                    if(!hasContext) continue;
-                    XposedBridge.hookMethod(method,hook);
-                    count++;
-                }
+        return listHook;
+    }
+    /** Other modules may add the 模块 group after us; join it while it is being constructed. */
+    private void hookGroup(Class<?> type) {
+        if(groupHooked) return;
+        groupHooked=true;
+        groupClass=type;
+        XC_MethodHook hook=new XC_MethodHook() {
+            @Override protected void beforeHookedMethod(MethodHookParam param) {
+                Object[] args=param.args;
+                if(args==null || args.length<2 || !(args[0] instanceof List) || !(args[1] instanceof CharSequence)) return;
+                if(!"模块".contentEquals((CharSequence)args[1])) return;
+                try { args[0]=joinGroupItems((List<?>)args[0]); }
+                catch(Throwable e) { runtime.log("加入模块分组失败 "+e.getClass().getSimpleName()); }
+            }
+        };
+        try { XposedBridge.hookAllConstructors(type,hook); runtime.log("已监听设置分组 "+type.getSimpleName()); }
+        catch(Throwable e) { runtime.log("监听设置分组失败 "+e.getClass().getSimpleName()); }
+    }
+    private List<?> joinGroupItems(List<?> items) throws ReflectiveOperationException {
+        if(containsTitle(items,TITLE)) return items;
+        Object sample=items.isEmpty()?null:items.get(0);
+        Context context=sample==null?null:findContext(sample);
+        if(context==null) context=lastContext.get();
+        if(context==null) { runtime.log("模块分组没有可用上下文"); return items; }
+        Object item=null;
+        if(sample!=null) item=makeItem(sample.getClass(),context,TITLE);
+        if(item==null && itemClass!=null) item=makeItem(itemClass,context,TITLE);
+        if(item==null) { runtime.log("无法为模块分组创建条目"); return items; }
+        bindClick(item,context);
+        List<Object> joined=new ArrayList<>(items);
+        joined.add(item);
+        runtime.settingInstalled=true;
+        runtime.log("已加入 QQ 设置的模块分组");
+        return joined;
+    }
+    private static Context findContext(Object item) {
+        for(Class<?> type=item.getClass(); type!=null && type!=Object.class; type=type.getSuperclass()) {
+            for(Field field:type.getDeclaredFields()) {
+                if(Modifier.isStatic(field.getModifiers()) || !Context.class.isAssignableFrom(field.getType())) continue;
+                try { field.setAccessible(true); Object value=field.get(item); if(value instanceof Context) return (Context)value; }
+                catch(Throwable ignored) { /* unreadable */ }
             }
         }
-        hooked=count>0;
-        if(hooked) runtime.log("QQ设置钩子 "+count+" 个");
-        else runtime.log("没有找到 QQ 设置配置类");
-        return hooked;
+        return null;
     }
     @SuppressWarnings("unchecked")
     private void insert(Context context,List<?> result) throws ReflectiveOperationException {
         if(containsTitle(result,TITLE)) return;
-        boolean settingsPage=containsTitle(result,"模块") || containsTitle(result,"QFun") || containsTitle(result,"消息通知") || containsTitle(result,"账号与安全");
-        if(!settingsPage) return;
+        boolean settingsPage=false;
+        for(String mark:new String[]{"模块","功能","隐私","通用","消息通知","账号与安全","QFun"}) settingsPage|=containsTitle(result,mark);
+        if(!settingsPage) {
+            if(callbackLogs<6) runtime.log("设置列表未识别 "+titles(result));
+            return;
+        }
         Object moduleGroup=findGroup(result,"模块");
+        if(moduleGroup==null && !standalone) {
+            // Give other modules this pass to add their 模块 group; if nobody does, build our own next time.
+            final List<?> snapshot=result;
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                if(runtime.settingInstalled || containsTitle(snapshot,"模块")) return;
+                standalone=true;
+                runtime.log("未发现模块分组，下次打开设置时自建");
+            });
+            return;
+        }
         Object sampleItem=moduleGroup==null?null:firstItem(moduleGroup);
         if(sampleItem==null) {
             for(Object group:result) {
@@ -115,7 +228,7 @@ final class SettingInject {
         Object unit=unitClass.getField("INSTANCE").get(null);
         Object proxy=Proxy.newProxyInstance(loader,new Class<?>[]{function},(InvocationHandler)(p,method,args) -> {
             String name=method.getName();
-            if("invoke".equals(name)) { openSettings(context); return unit; }
+            if("invoke".equals(name)) { open(context); return unit; }
             if("toString".equals(name)) return "LingBubbleSettings";
             if("hashCode".equals(name)) return System.identityHashCode(p);
             if("equals".equals(name)) return args!=null && args.length>0 && p==args[0];
@@ -133,11 +246,27 @@ final class SettingInject {
         }
         runtime.log("设置条目没有点击回调");
     }
-    private static void openSettings(Context context) {
-        Intent intent=new Intent();
-        intent.setComponent(new ComponentName("io.github.ling.randombubble","io.github.ling.randombubble.ui.MainActivity"));
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(intent);
+    /** The standalone app exists only on LSPosed-style installs; embedded installs get an in-process panel. */
+    private void open(Context context) {
+        android.app.Activity activity=activityOf(context);
+        if(activity==null) activity=runtime.currentActivity();
+        if(runtime.bridge.appReachable()) {
+            try {
+                Intent intent=new Intent();
+                intent.setComponent(new ComponentName("io.github.ling.randombubble","io.github.ling.randombubble.ui.MainActivity"));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                if(context.getPackageManager().resolveActivity(intent,0)!=null) { context.startActivity(intent); return; }
+            } catch(Throwable ignored) { /* fall back to the in-process panel */ }
+        }
+        if(activity==null) { runtime.log("没有可用的界面打开设置面板"); return; }
+        runtime.log("打开模块设置面板");
+        SettingsPanel.show(activity,runtime);
+    }
+    private static android.app.Activity activityOf(Context context) {
+        for(Context c=context; c!=null; c=c instanceof android.content.ContextWrapper?((android.content.ContextWrapper)c).getBaseContext():null) {
+            if(c instanceof android.app.Activity) return (android.app.Activity)c;
+        }
+        return null;
     }
     private static Object makeItem(Class<?> type,Context context,String title) {
         int icon=context.getResources().getIdentifier("qui_setting","drawable",context.getPackageName());
@@ -177,27 +306,58 @@ final class SettingInject {
         }
         return null;
     }
+    private Class<?> providerBase() {
+        if(providerBase!=null || providerBaseMissing) return providerBase;
+        try { providerBase=Class.forName("com.tencent.mobileqq.setting.processor.SettingConfigProvider",false,loader); }
+        catch(ClassNotFoundException e) { providerBaseMissing=true; }
+        return providerBase;
+    }
+    private boolean concreteProvider(Class<?> type) {
+        if(type==null || type.isInterface() || Modifier.isAbstract(type.getModifiers())) return false;
+        Class<?> base=providerBase();
+        return base!=null && type!=base && base.isAssignableFrom(type);
+    }
+    private void hookFailure(Method method,Throwable e) {
+        String msg=e.getMessage()==null?"":e.getMessage().replace('\n',' ');
+        if(msg.length()>80) msg=msg.substring(0,80);
+        runtime.log("设置方法钩子失败 "+method.getDeclaringClass().getSimpleName()+"."+method.getName()+" "+e.getClass().getSimpleName()+" "+msg);
+    }
     private List<Class<?>> findProviders() {
         List<Class<?>> found=new ArrayList<>();
         String[] known={
                 "com.tencent.mobileqq.setting.main.NewSettingConfigProvider",
                 "com.tencent.mobileqq.setting.main.MainSettingConfigProvider"
         };
-        for(String name:known) addClass(found,name);
-        Class<?> base=null;
-        try { base=Class.forName("com.tencent.mobileqq.setting.processor.SettingConfigProvider",false,loader); found.add(base); }
-        catch(ClassNotFoundException ignored) { /* older layout may use another base */ }
-        for(String name:dexNames("com.tencent.mobileqq.setting.")) {
-            boolean interesting=name.contains("Setting") || name.contains("Item") || name.contains("Processor");
-            if(!interesting) continue;
+        for(String name:known) rememberProvider(found,name);
+        List<String> names=settingClassNames();
+        int examined=0;
+        for(String name:names) {
+            String lower=name.toLowerCase(Locale.ROOT);
+            if(!(lower.contains(".setting.main.") || lower.contains("settingconfig") || lower.contains("itemprocessor") || lower.contains("simpleitem"))) continue;
+            examined++;
             try {
                 Class<?> type=Class.forName(name,false,loader);
-                if(base!=null && base.isAssignableFrom(type) && !found.contains(type)) found.add(type);
+                if(concreteProvider(type) && !found.contains(type)) found.add(type);
                 if(itemClass==null && looksLikeItem(type)) itemClass=type;
             } catch(Throwable ignored) { /* skip unloadable class */ }
         }
-        runtime.log("设置类 "+found.size()+" 个"+(itemClass==null?"":" 条目类已找到"));
+        StringBuilder ids=new StringBuilder();
+        for(Class<?> type:found) { if(ids.length()>0) ids.append(' '); ids.append(type.getSimpleName()); }
+        runtime.log("设置候选 "+examined+" 个，具体设置类 "+found.size()+" 个 "+ids+(itemClass==null?"":"，条目类已找到"));
         return found;
+    }
+    private void rememberProvider(List<Class<?>> found,String name) {
+        try {
+            Class<?> type=Class.forName(name,false,loader);
+            if(concreteProvider(type) && !found.contains(type)) found.add(type);
+        } catch(ClassNotFoundException ignored) { /* optional */ }
+    }
+    private List<String> settingClassNames() {
+        LinkedHashSet<String> names=new LinkedHashSet<>();
+        names.addAll(scanApk("Lcom/tencent/mobileqq/setting/"));
+        names.addAll(dexEntries("com.tencent.mobileqq.setting."));
+        if(names.isEmpty()) runtime.log("没有从安装包或已加载 dex 读到设置类");
+        return new ArrayList<>(names);
     }
     private static boolean looksLikeItem(Class<?> type) {
         for(Constructor<?> ctor:type.getDeclaredConstructors()) {
@@ -206,13 +366,7 @@ final class SettingInject {
         }
         return false;
     }
-    private void addClass(List<Class<?>> found,String name) {
-        try { found.add(Class.forName(name,false,loader)); } catch(ClassNotFoundException ignored) { /* optional */ }
-    }
-    private List<String> dexNames(String prefix) {
-        List<String> fromApk=scanApk("Lcom/tencent/mobileqq/setting/");
-        if(!fromApk.isEmpty()) return fromApk;
-        runtime.log("安装包里没有读到设置类，改查已加载的 dex");
+    private List<String> dexEntries(String prefix) {
         List<String> names=new ArrayList<>();
         for(ClassLoader current=loader; current!=null; current=current.getParent()) {
             if(!(current instanceof BaseDexClassLoader)) continue;
@@ -246,6 +400,8 @@ final class SettingInject {
             ArrayList<String> apks=new ArrayList<>();
             if(app!=null) {
                 apks.add(app.getPackageCodePath());
+                apks.add(app.getApplicationInfo().publicSourceDir);
+                apks.add(app.getApplicationInfo().sourceDir);
                 String[] splits=app.getApplicationInfo().splitSourceDirs;
                 if(splits!=null) for(String split:splits) apks.add(split);
             }
@@ -287,12 +443,38 @@ final class SettingInject {
         }
         return -1;
     }
+    private static String titles(Object value) {
+        StringBuilder out=new StringBuilder();
+        collectTitles(value,out,Collections.newSetFromMap(new IdentityHashMap<Object,Boolean>()),0);
+        return out.length()==0?"无标题":out.toString();
+    }
+    private static void collectTitles(Object value,StringBuilder out,Set<Object> seen,int depth) {
+        if(value==null || depth>4 || out.length()>48 || !seen.add(value)) return;
+        if(value instanceof CharSequence) {
+            String text=value.toString();
+            if(text.length()>0 && text.length()<=12) { if(out.length()>0) out.append(' '); out.append(text); }
+            return;
+        }
+        if(value instanceof List) { for(Object child:(List<?>)value) collectTitles(child,out,seen,depth+1); return; }
+        String name=value.getClass().getName();
+        if(name.startsWith("java.") || name.startsWith("android.") || name.startsWith("kotlin.")) return;
+        for(Class<?> type=value.getClass(); type!=null && type!=Object.class; type=type.getSuperclass()) {
+            for(Field field:type.getDeclaredFields()) {
+                if(Modifier.isStatic(field.getModifiers())) continue;
+                try { field.setAccessible(true); collectTitles(field.get(value),out,seen,depth+1); }
+                catch(Throwable ignored) { /* unreadable */ }
+            }
+        }
+    }
     private static boolean containsTitle(Object value,String title) {
         return containsTitle(value,title,Collections.newSetFromMap(new IdentityHashMap<Object,Boolean>()),0);
     }
     private static boolean containsTitle(Object value,String title,Set<Object> seen,int depth) {
         if(value==null || depth>5 || !seen.add(value)) return false;
-        if(value instanceof String) return title.equals(value);
+        if(value instanceof CharSequence) {
+            String text=value.toString();
+            return text.length()<=24 && title.equals(text);
+        }
         if(value instanceof List) { for(Object child:(List<?>)value) if(containsTitle(child,title,seen,depth+1)) return true; return false; }
         String name=value.getClass().getName();
         if(name.startsWith("java.") || name.startsWith("android.") || name.startsWith("kotlin.")) return false;

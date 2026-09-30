@@ -7,8 +7,8 @@ android {
         applicationId 'io.github.ling.randombubble'
         minSdk 26
         targetSdk 35
-        versionCode 13
-        versionName '0.1.12-experimental'
+        versionCode 20
+        versionName '0.1.19-experimental'
     }
     buildFeatures { buildConfig true }
     compileOptions {

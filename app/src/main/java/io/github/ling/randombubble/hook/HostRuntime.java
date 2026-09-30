@@ -48,11 +48,10 @@ final class HostRuntime {
             Object elements=Reflect.get(record,"elements"), attrs=Reflect.get(record,"msgAttrs");
             // QFun reuses exactly these original objects in both repeater branches.
             originalObjects.add(elements);
-            if(attrs instanceof Map && !((Map<?,?>)attrs).isEmpty()) originalObjects.add(attrs);
             if(elements instanceof List) for(Object e:(List<?>)elements) originalObjects.add(e);
             if(bridge.config.collect) {
                 List<BubbleSpec> specs=adapter.extract(attrs);
-                for(BubbleSpec b:specs) { bridge.offer(b); observations.incrementAndGet(); }
+                for(BubbleSpec b:specs) { bridge.harvest(b); observations.incrementAndGet(); }
             }
         } catch(Throwable e) { setError("原消息读取："+e.getClass().getSimpleName()); }
     }
@@ -81,12 +80,54 @@ final class HostRuntime {
             case APPLIED: applied.incrementAndGet(); active=r.used; break;
             case ERROR: errors.incrementAndGet(); setError("发送前跳过："+r.errorType); break;
         }
-        if(r.reason!=SendPolicy.Reason.DISABLED) log("发送结果 "+r.reason+(r.errorType==null?"":" "+r.errorType));
+        if(r.reason!=SendPolicy.Reason.DISABLED) {
+            String extra=r.errorType==null?"":" "+r.errorType;
+            if(r.reason==SendPolicy.Reason.APPLIED && r.used!=null)
+                extra=" "+BubblePicker.visual(r.used)+" 样式"+visuals(c.selected)+(c.fixed?" 固定":" 随机")+(isEquipped(r.used)?" 与装扮相同":" 装扮为 "+equippedLabel());
+            log("发送结果 "+r.reason+extra);
+        }
         return r.attributes;
     }
     private BubbleSpec active;
-    /** Latest bubble actually attached to a send. Bubble id getters must not roll again. */
-    BubbleSpec currentBubble() { return active; }
+    private volatile java.lang.ref.WeakReference<android.app.Activity> resumed=new java.lang.ref.WeakReference<>(null);
+    void resumed(android.app.Activity activity) { resumed=new java.lang.ref.WeakReference<>(activity); }
+    android.app.Activity currentActivity() {
+        android.app.Activity a=resumed.get();
+        return a==null || a.isFinishing() || a.isDestroyed() ? null : a;
+    }
+    private volatile int equippedBubble=Integer.MIN_VALUE, equippedSub=Integer.MIN_VALUE;
+    /** Account bubble as QQ itself reports it; the value the server most likely shows to others. */
+    void equipped(boolean sub,int value) {
+        if(sub ? value==equippedSub : value==equippedBubble) return;
+        if(sub) equippedSub=value; else equippedBubble=value;
+        log("账号装扮 "+equippedLabel());
+    }
+    String equippedLabel() {
+        String main=equippedBubble==Integer.MIN_VALUE?"?":String.valueOf(equippedBubble);
+        String sub=equippedSub==Integer.MIN_VALUE?"?":String.valueOf(equippedSub);
+        return "气泡 "+main+" / 子气泡 "+sub;
+    }
+    boolean isEquipped(BubbleSpec spec) {
+        if(spec==null || equippedBubble==Integer.MIN_VALUE) return false;
+        int main=spec.bubbleId==null?0:spec.bubbleId;
+        return main==equippedBubble;
+    }
+    /** One style for the getter calls and sendMsg that belong to the same message. */
+    BubbleSpec currentBubble() {
+        long now=SystemClock.uptimeMillis();
+        BubbleSpec recent=picker.held(now,BubblePicker.HOLD_MS);
+        if(recent!=null) return recent;
+        Config c=bridge.config;
+        if(!c.enabled || c.selected.isEmpty()) return null;
+        active=picker.choose(c.selected,c.fixed,c.avoidRepeat);
+        if(active!=null) { picker.commit(active); picker.hold(active,now); }
+        return active;
+    }
+    private static int visuals(List<BubbleSpec> list) {
+        java.util.HashSet<String> looks=new java.util.HashSet<>();
+        if(list!=null) for(BubbleSpec s:list) if(s!=null) looks.add(BubblePicker.visual(s));
+        return looks.size();
+    }
     void log(String line) {
         String row=android.text.format.DateFormat.format("HH:mm:ss",System.currentTimeMillis())+" "+line;
         synchronized(logs) { logs.addLast(row); while(logs.size()>80) logs.removeFirst(); }
@@ -101,7 +142,7 @@ final class HostRuntime {
         return out.length()==0?"尚无":out.toString();
     }
     String report() {
-        return "Ling 随机气泡 0.1.12-experimental\nQQ："+qqVersion+"\n账号："+bridge.libraryMask()+"\n版本门控："+(versionSupported?"匹配目标":"版本不同，仍尝试发送")
+        return "Ling 随机气泡 0.1.19-experimental\nQQ："+qqVersion+"\n账号："+bridge.libraryMask()+"\n版本门控："+(versionSupported?"匹配目标":"版本不同，仍尝试发送")
             +"\n发送接口："+sendInstalled+"\n转发回避接口："+forwardInstalled+"\n原消息识别接口："+recordInstalled
             +"\n收藏菜单："+menuInstalled+" 注入次数："+menuInjected+"\nQQ设置入口："+settingInstalled
             +"\n发送按钮观察："+tapInstalled+"\n配置桥接："+bridgeHealthy

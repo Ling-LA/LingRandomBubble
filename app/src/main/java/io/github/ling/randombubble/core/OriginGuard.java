@@ -14,16 +14,24 @@ public final class OriginGuard {
         }
         return false;
     }
-    public static boolean deniedStack(StackTraceElement[] stack) {
-        if (stack == null) return true;
+    public static boolean deniedStack(StackTraceElement[] stack) { return deniedReason(stack) != null; }
+    /** Null when this stack may be a normal send. QFun's own send hook is not a repeat. */
+    public static String deniedReason(StackTraceElement[] stack) {
+        if (stack == null) return "nostack";
         for (StackTraceElement f : stack) {
             String c = f.getClassName().toLowerCase(Locale.ROOT);
             String m = f.getMethodName().toLowerCase(Locale.ROOT);
-            if (c.startsWith("me.yxp.qfun.") || c.startsWith("io.github.qauxv.")
-                    || c.contains("repeatmsg") || c.contains("repeater")
-                    || c.contains("multiforward") || c.contains("forwardactivity")
-                    || c.contains("msgfollow") || m.equals("forwardmsg")) return true;
+            String kind = null;
+            if (c.contains("repeatmsg") || c.contains("repeater") || m.contains("repeat") || m.equals("directsend")) kind = "repeat";
+            else if (c.contains("multiforward") || c.contains("forwardactivity") || m.equals("forwardmsg")) kind = "forward";
+            else if (c.contains("msgfollow") || c.contains("plusone") || m.contains("plusone")) kind = "follow";
+            if (kind == null) continue;
+            String simple = f.getClassName();
+            int dot = simple.lastIndexOf('.');
+            if (dot >= 0 && dot + 1 < simple.length()) simple = simple.substring(dot + 1);
+            if (simple.length() > 40) simple = simple.substring(0, 40);
+            return kind + " " + simple + "." + f.getMethodName();
         }
-        return false;
+        return null;
     }
 }

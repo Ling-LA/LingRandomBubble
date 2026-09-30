@@ -8,8 +8,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public final class JsonCodec {
-    public static final int MAX_LIBRARY = 128;
-    public static final int MAX_JSON_CHARS = 262144;
+    /** No product cap. The byte guard only rejects a corrupt or enormous file. */
+    public static final int MAX_LIBRARY = Integer.MAX_VALUE;
+    public static final int MAX_JSON_CHARS = 4_000_000;
     private JsonCodec() {}
     public static JSONObject encode(BubbleSpec b) throws JSONException {
         JSONObject j = new JSONObject();
@@ -45,7 +46,6 @@ public final class JsonCodec {
     public static Config config(String text) throws JSONException {
         JSONObject j = object(text);
         JSONArray a = j.getJSONArray("bubbles");
-        if (a.length() > MAX_LIBRARY) throw new JSONException("Too many bubbles");
         List<BubbleSpec> selected = new ArrayList<>();
         for (int i=0; i<a.length(); i++) {
             JSONObject row = a.getJSONObject(i);

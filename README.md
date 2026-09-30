@@ -1,4 +1,4 @@
-# Ling 随机气泡 0.1.12-experimental
+# Ling 随机气泡 0.1.19-experimental
 
 **这是独立 Android / Xposed 模块的实验版源码工程，不是 QFun 脚本，不是 QFun 修改版，也不是现成 APK。**
 
@@ -51,7 +51,7 @@
 真正构建成功后，文件才会出现在：
 
 ```text
-out/LingRandomBubble-0.1.12-debug.apk
+out/LingRandomBubble-0.1.19-debug.apk
 out/SHA256SUMS.txt
 ```
 
