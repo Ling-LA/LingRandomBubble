@@ -1,0 +1,8 @@
+PASS final installed QQ versionName=9.3.50; LSPatch integrated module updated in-place.
+PASS real device Android 16; model 2410DPN6CC.
+PASS independent module and test app absent after Android fixture cleanup.
+PASS USB stay_on_while_plugged_in=0 (original, unchanged this run).
+PASS final actual COLD start and exact configuration readback: see qq-final-cold-0.1.50.txt and config-restored-0.1.50.txt.
+PASS current QQ native panel shows 0.1.50, supported QQ version, active send and observation interfaces, heartbeat active and sync exceptions=0; see current-final-0.1.50.txt.
+QQ was not uninstalled and its data was not cleared.
+Final UI left in QQ native module panel.

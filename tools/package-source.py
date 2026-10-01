@@ -15,7 +15,7 @@ for directory in ("app/src", "tests", "tools", ".github"):
 for name in ("README.md", "START_HERE.txt", "LICENSE", "Build-Windows.cmd", "Build-Linux-Mac.sh",
              "build.gradle", "settings.gradle", "gradle.properties", "app/build.gradle", ".gitignore", ".gitattributes", "build-validation.log"):
     files.add(root / name)
-for name in ("ARCHITECTURE.md", "DEVICE_TESTS.md", "TEST_REPORT.md", "VALIDATION-2026-09-30.md", "VALIDATION-2026-10-01.md", "VALIDATION-2026-10-02.md", "VALIDATION-2026-10-02-0.1.48.md",
+for name in ("ARCHITECTURE.md", "DEVICE_TESTS.md", "TEST_REPORT.md", "VALIDATION-2026-09-30.md", "VALIDATION-2026-10-01.md", "VALIDATION-2026-10-02.md", "VALIDATION-2026-10-02-0.1.48.md", "VALIDATION-2026-10-02-0.1.49.md",
              "RECEIVER-RESULT-2026-09-30.md", "qq-fixed-change-diagnostics-0.1.23.txt",
              "qq-account-manual-diagnostics-0.1.44.txt", "qq-account-fixed-second-0.1.44.txt",
              "core-tests-0.1.45.txt", "device-safety-0.1.45.txt", "embedded-update-0.1.45.txt",
@@ -35,9 +35,11 @@ files.add(reports[0])
 record_name = re.compile(r"[a-z0-9-]+-" + re.escape(version) + r"\.txt")
 records = [p for p in (root / "docs").glob("*.txt") if record_name.fullmatch(p.name)]
 files.update(records)
-# Preserve previous releases, including 0.1.47/0.1.48's later sanitized failure diagnoses.
+# Preserve prior public versioned evidence, including later sanitized failure diagnoses.
+# Current 0.1.50 records include current-pre-fix and qq-emoticon-schema; the 0.1.49
+# historical pattern includes collect-failure. Unversioned and older raw logs stay out.
 historical_records = []
-for historical_version in ("0.1.46", "0.1.47", "0.1.48"):
+for historical_version in ("0.1.46", "0.1.47", "0.1.48", "0.1.49"):
     historical_record_name = re.compile(r"[a-z0-9-]+-" + re.escape(historical_version) + r"\.txt")
     historical_records.extend(p for p in (root / "docs").glob("*.txt")
                               if historical_record_name.fullmatch(p.name))
@@ -67,5 +69,5 @@ artifacts = (out / ("LingRandomBubble-" + version + "-debug.apk"),
 (out / "SHA256SUMS.txt").write_text("".join(hashlib.sha256(p.read_bytes()).hexdigest() + "  " + p.name + "\n" for p in artifacts), encoding="ascii", newline="\n")
 print("PASS source archive: " + str(len(paths)) + " files; all hashes verified; private APKs excluded")
 print("Current validation: " + reports[0].name + "; " + str(len(records)) + " release records")
-print("Historical 0.1.46 / 0.1.47 / 0.1.48 records: " + str(len(historical_records)))
+print("Historical 0.1.46 / 0.1.47 / 0.1.48 / 0.1.49 records: " + str(len(historical_records)))
 print("Created: " + str(archive))

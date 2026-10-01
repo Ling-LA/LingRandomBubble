@@ -1,0 +1,61 @@
+QQ 9.3.50 inline emoticon structure check (2026-10-02)
+
+Source: the original QQ APK inside the private installed LSPatch package; classes4.dex.
+Only structural facts are recorded here. No QQ APK, DEX, decompiled implementation,
+account identifiers, message text, or authentication data is distributed.
+
+Exact class: com.tencent.mobileqq.text.style.EmoticonSpan
+Access: public, not final. Direct superclass: android.text.style.ReplacementSpan.
+Known subclass GuildEmoticonSpan is a separate class and is not authorized by an
+exact-class check. Generic ReplacementSpan/ImageSpan/ISmallEmojiSpan implementations
+are not authorized by this evidence.
+
+Fields verified:
+  public int index
+  public int emojiType
+  protected int size
+  public volatile boolean mIsAPNG
+  public float eLeft / eTop / eRight / eBottom
+  private java.lang.ref.WeakReference mDrawableRef
+  protected com.tencent.mobileqq.text.ISpanRefreshCallback mSpanCallback
+  public static final int ANIMATION_MASK
+
+Constructor signature: public EmoticonSpan(int, int, int).
+In the ordinary, non-hotpatch constructor path, argument 1 is assigned to index,
+argument 2 to size, and argument 3 to emojiType. No message-send or account-setting
+operation is present in that ordinary constructor path.
+
+The QQEmoticonSpanProcessor in classes.dex creates these spans and installs them
+over text ranges. Its separate small-emoji service can create other span classes;
+that route is not covered by an EmoticonSpan exact-class check.
+
+Drawable methods are unsuitable for classification: getDrawable can create/cache
+drawables and attach listeners; rendering supports QQ emoji/system faces including
+GIF/APNG. Classification and snapshot checks must not call getDrawable, draw,
+getSize, setSize, setDrawableListenerIfNeed, or other rendering/mutation methods.
+Read field types and primitive metadata only, without editing QQ spans or input.
+
+Suggested narrow support boundary, subject to implementation and device validation:
+  - exact EmoticonSpan class only; reject subclasses and unknown span classes;
+  - non-composing span, valid range 0 <= start < end <= text length;
+  - validate primitive field types; capture span identity, range, flags, index,
+    emojiType and other accepted mutable metadata before waiting, then compare
+    again before setting/restoring the original native send click;
+  - a valid zero-length range for this exact drawing span may be treated as a
+    non-covering residual marker, never removed or rewritten; negative/out-of-range
+    positions and arbitrary zero-length rich spans remain unsupported;
+  - @, active logical replies, attachments, stickers and unknown rich content are
+    separate paths; this class evidence alone does not authorize them;
+  - keep original text, span and lifecycle changes as cancellation conditions.
+
+The 0.1.49 failure log contains EmoticonSpan class names without ranges or field
+metadata. It does not establish that an emoji-after-send plain-text failure was
+caused by a zero-length residual span. Read-only range/tag/logical-reply diagnostics
+and real native composer tests are required; schema evidence is not a device PASS.
+
+Separate discovery limitation: 0.1.49's last-12 AIOContext cache can in principle
+evict every wrapper for a still-live Fragment if enough other contexts are built
+without rebuilding that Fragment. The observed failure occurred before binding,
+with earlier successful bindings at contexts=8, so it does not prove that cache
+limit caused this incident. Treat weak Fragment discovery as a technical follow-up,
+not as a fix or tested result of this emoticon change.

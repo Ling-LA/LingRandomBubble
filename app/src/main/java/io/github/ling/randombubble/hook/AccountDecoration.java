@@ -103,7 +103,7 @@ final class AccountDecoration {
         boolean manual=queuedManual!=null;
         JSONObject j=manual?queuedManual:settings;
         if(manual && j.optLong("expires")<System.currentTimeMillis()){queuedManual=null;status="手动请求已过期，请重新点击";return;}
-        if(!manual && !j.optBoolean("automatic")){if(j.optBoolean("perMessage"))status="逐消息已开启；等待普通文字发送点击";return;}
+        if(!manual && !j.optBoolean("automatic")){if(j.optBoolean("perMessage"))status="逐消息已开启；等待文字或 QQ 小表情发送点击";return;}
         if(!foreground()){status="轮换暂停：等待 QQ 前台且屏幕解锁";return;}
         int seconds=j.getInt("seconds");DecorationSettings.interval(seconds);
         long now=SystemClock.elapsedRealtime(),period=(manual?60:seconds)*1000L;

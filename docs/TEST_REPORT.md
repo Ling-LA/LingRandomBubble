@@ -1,6 +1,18 @@
 # 当前测试报告入口
 
-当前版本为 0.1.49 / code 50。[96组核心](core-tests-0.1.49.txt)、[92项Android](device-safety-0.1.49.txt)通过，构建和Lint 0 errors/27 warnings通过；覆盖安装49成功。A～E及真实冷启动后原219池的H，六条各发送一次；F修改还原/G聊天离开再返回取消保留精确草稿。原最新配置与环境已恢复，本轮接收端暂无法配合，样式及重进未验证。完整范围见[49报告](VALIDATION-2026-10-02-0.1.49.md)。
+当前版本为 **0.1.50 / code 51**。[96组核心](core-tests-0.1.50.txt)、[122项Android](device-safety-0.1.50.txt)通过，含30项生产文字分类与快照回归；[构建和Lint](android-build-0.1.50.txt)为0 errors/30 warnings，手机覆盖安装50成功。完整范围见[50报告](VALIDATION-2026-10-02-0.1.50.md)。
+
+[四条顺序发送](current-sequence-0.1.50.txt)涵盖QQ小表情、之后的纯文字和双击；[编辑还原与HOME取消](current-guards-0.1.50.txt)均未自动发送、保留精确草稿。冷启动后的[两款接收端测试](current-receiver-sends-0.1.50.txt)各发送一次；两个发送进程合计延后/恢复/取消 **8/6/2**，六条正向各可见一条、两次取消各0条。用户文字确认[“两款不同，重进后仍保留”](receiver-current-0.1.50.txt)；没有读取接收端截图，不能称为截图核验。
+
+[内嵌更新](embedded-update-0.1.50.txt)保留原QQ签名及其他40318项ZIP载荷；[16KiB对齐](qq-alignment-0.1.50.txt)、[模块签名](apk-signature-0.1.50.txt)及[内嵌模块字节一致](embedded-exact-module-0.1.50.txt)已核对。第二次[实际COLD启动](qq-final-cold-0.1.50.txt)后，[最终恢复读回](config-restored-0.1.50.txt)确认原219款/60秒、automatic=false/perMessage=true/collect=false，库2644项及2449勾选保持。最终新进程[0/0/0、心跳138/sync0](current-final-0.1.50.txt)仅用于配置与入口检查，未再次发送测试消息；[环境核对](device-environment-0.1.50.txt)确认独立模块和测试应用不存在、USB常亮为原值0，QQ原生面板留在前台。
+
+50支持精确QQ小表情类的输入并保护span快照；本轮短时测试不能证明所有随机失效、长期稳定或风控安全。锁屏、全部生命周期分支、新60秒及完整1800秒定时周期等未在50全面复测；权益排除是既有当前QQ进程行为，重启或保存配置后重新核对，不删库或更改勾选。
+
+## 0.1.49 历史摘要
+
+以下保留49当时的结果和限制，不代替50验证。
+
+0.1.49 / code 50：[96组核心](core-tests-0.1.49.txt)、[92项Android](device-safety-0.1.49.txt)通过，构建和Lint 0 errors/27 warnings通过；覆盖安装49成功。A～E及真实冷启动后原219池的H，六条各发送一次；F修改还原/G聊天离开再返回取消保留精确草稿。原最新配置与环境已恢复，本轮接收端暂无法配合，样式及重进未验证。完整范围见[49报告](VALIDATION-2026-10-02-0.1.49.md)。
 
 [内嵌更新](embedded-update-0.1.49.txt)保留原QQ签名、其他40318项ZIP载荷；[16KiB对齐](qq-alignment-0.1.49.txt)、[模块签名](apk-signature-0.1.49.txt)及[模块与内嵌字节一致](embedded-exact-module-0.1.49.txt)已核对。这些检查不证明消息交付，本轮未完成项不记PASS。
 

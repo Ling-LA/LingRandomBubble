@@ -1,0 +1,1 @@
+PASS assembleDebug / assembleDebugAndroidTest / lintDebug. BUILD SUCCESSFUL. Android Lint: 0 errors, 30 warnings. Module version0.1.50/code51.

@@ -1,0 +1,1 @@
+PASS zipalign -c -P 16 -v 4: Verification succesful. Private integrated QQ APK excluded.

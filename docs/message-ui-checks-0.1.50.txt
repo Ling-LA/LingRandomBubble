@@ -1,0 +1,9 @@
+PASS LingBubble-pre-50-after-emoji-C: sent; visible exact history copies=1; composer verified
+PASS LingBubble-emoji-50-A..: sent; visible exact history copies=1; composer verified
+PASS LingBubble-after-emoji-50-B: sent; visible exact history copies=1; composer verified
+PASS LingBubble-emoji-50-C...«: sent; visible exact history copies=1; composer verified
+PASS LingBubble-after-emoji-50-D: sent; visible exact history copies=1; composer verified
+PASS LingBubble-emoji-50-E..7: draft; visible exact history copies=0; composer verified
+PASS LingBubble-emoji-50-F..: draft; visible exact history copies=0; composer verified
+PASS LingBubble-visible-50-I..: sent; visible exact history copies=1; composer verified
+PASS LingBubble-visible-50-J: sent; visible exact history copies=1; composer verified

@@ -31,6 +31,7 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
         java.lang.reflect.Field accountField=null;
         Object savedAccount=null;
         try {
+            io.github.ling.randombubble.hook.ComposerTextDeviceChecks.run(name -> check(name,true));
             io.github.ling.randombubble.hook.HostSettingsDeviceChecks.run(context,name -> check(name,true));
             io.github.ling.randombubble.hook.AccountLibraryDeviceChecks.run(context,name -> check(name,true));
             JSONObject row=JsonCodec.encode(new BubbleSpec(17,17,0L,101,201,null,0));

@@ -46,7 +46,7 @@ final class SettingsPanel {
         String state=settings.optBoolean("automatic",false)?"计时轮换开启 · 间隔 "+settings.optInt("seconds",1800)+" 秒":"计时轮换关闭";
         state+=" · 逐消息"+(settings.optBoolean("perMessage",false)?"开启":"关闭");
         page.addView(label(activity,state,14,PAPER,false));
-        page.addView(label(activity,"通过商城正常接口修改整账号装扮。计时与逐消息可独立开启；逐消息会等待服务器确认后继续发送。",13,MUTED,false),gap(activity,6));
+        page.addView(label(activity,"通过商城正常接口修改整账号装扮。计时与逐消息可独立开启；文字及 QQ 自带小表情的逐消息发送会等待服务器确认。",13,MUTED,false),gap(activity,6));
         page.addView(pill(activity,"配置手动 / 低频 / 高频切换",true,() -> {
             dialog.dismiss(); EmbeddedDecorationPanel.show(activity,runtime,() -> show(activity,runtime));
         }),gap(activity,8));

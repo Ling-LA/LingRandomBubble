@@ -8,7 +8,6 @@ import android.os.PowerManager;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.text.Editable;
-import android.text.Selection;
 import android.text.Spanned;
 import android.text.SpanWatcher;
 import android.text.TextWatcher;
@@ -153,7 +152,7 @@ final class UiTapGate {
             if(!activeContextHookReady)return ordinary("当前会话切换观察未就绪");
             View root=activity.getWindow().getDecorView();EditText editor=uniqueComposer(root);
             View composer=editor==null?null:composerContainer(button,editor);
-            if(editor==null || composer==null || !plainEditor(editor) || richDraft(composer))return ordinary("本次输入不是已适配的普通文字；"+inputDiagnostic(editor,composer));
+            if(editor==null || composer==null || !plainEditor(editor) || richDraft(composer))return ordinary("本次输入不是已适配的文字或 QQ 小表情；"+inputDiagnostic(editor,composer));
             Binding binding=binding(button,activity,true);
             if(binding==null)return ordinary("未匹配唯一会话上下文");
             int reply=replyState(binding);
@@ -182,7 +181,7 @@ final class UiTapGate {
             if(activity.getWindow().getDecorView()!=root || button.getRootView()!=root || !button.isAttachedToWindow() || button.getWindowToken()!=attempt.window ||
                 !button.hasWindowFocus() || !button.isShown() || !button.isEnabled() || !button.isClickable() || listener(button)!=attempt.listener.get())return false;
             View composer=composerContainer(button,editor);
-            if(uniqueComposer(root)!=editor || composer==null || composer!=attempt.composer.get() || editor.getText()!=attempt.editable.get() || !plainEditor(editor) || richDraft(composer) || !MessageDigest.isEqual(attempt.textHash,hash(editor.getText())))return false;
+            if(uniqueComposer(root)!=editor || composer==null || composer!=attempt.composer.get() || editor.getText()!=attempt.editable.get() || !plainEditor(editor) || richDraft(composer) || !attempt.spans.matches(editor.getText()) || !MessageDigest.isEqual(attempt.textHash,hash(editor.getText())))return false;
             if(!attempt.owner.equals(AccountRef.current(activity)))return false;
             JSONObject config=runtime.bridge.controlSettings();
             if(!config.optBoolean("perMessage") || !attempt.owner.equals(config.optString("account")) || !attempt.generation.equals(config.optString("generation")))return false;
@@ -298,21 +297,8 @@ final class UiTapGate {
         }
         return null;
     }
-    private static boolean plain(Editable text) {
-        if(text==null || text.length()==0 || text.length()>12000)return false;
-        for(Object span:text.getSpans(0,text.length(),Object.class)) {
-            if((text.getSpanFlags(span)&Spanned.SPAN_COMPOSING)!=0)return false;
-            if(span==Selection.SELECTION_START || span==Selection.SELECTION_END || span instanceof TextWatcher || span instanceof SpanWatcher)continue;
-            // Android's editing machinery adds payload-free Concrete marker objects
-            // even for adb-entered plain text. Accept this exact framework class;
-            // arbitrary NoCopySpan implementations can still represent QQ content.
-            if(span.getClass()==android.text.NoCopySpan.Concrete.class)continue;
-            return false;
-        }
-        return true;
-    }
     private static boolean plainEditor(EditText editor) {
-        if(!plain(editor.getText()))return false;
+        if(!ComposerTextGate.supported(editor.getText()))return false;
         // QQ 9.3.50 h.n() clears the gja tag and compound drawables but leaves
         // aio.reply.a movement installed. Movement alone does not prove a reply.
         int key=editor.getResources().getIdentifier("gja","id","com.tencent.mobileqq");
@@ -360,10 +346,17 @@ final class UiTapGate {
         StringBuilder result=new StringBuilder("spanClasses=");
         Object[] spans=editor.getText().getSpans(0,editor.getText().length(),Object.class);
         if(spans.length==0)result.append("none");
-        for(int i=0;i<Math.min(spans.length,12);i++) {if(i>0)result.append(',');result.append(spans[i].getClass().getName());}
+        for(int i=0;i<Math.min(spans.length,12);i++) {
+            if(i>0)result.append(',');result.append(spans[i].getClass().getName());
+            // Structural metadata distinguishes an inline span from a zero-length leftover.
+            // Never include span fields, values, or draft text in diagnostics.
+            result.append('[').append(editor.getText().getSpanStart(spans[i])).append(':').append(editor.getText().getSpanEnd(spans[i])).append(':').append(editor.getText().getSpanFlags(spans[i])).append(']');
+        }
         if(spans.length>12)result.append(",...");
         Object movement=editor.getMovementMethod();result.append(";movement=").append(movement==null?"none":movement.getClass().getName());
         result.append(";drawables=").append(drawableFlags(editor.getCompoundDrawables())).append('/').append(drawableFlags(editor.getCompoundDrawablesRelative()));
+        int replyKey=editor.getResources().getIdentifier("gja","id","com.tencent.mobileqq");
+        result.append(";replyTag=").append(replyKey==0?"unknown":editor.getTag(replyKey)!=null?"present":"empty");
         String rich=richDraftReason(composer);result.append(";rich=").append(rich==null?"none":rich);return result.toString();
     }
     private static String drawableFlags(android.graphics.drawable.Drawable[] drawables) {
@@ -387,7 +380,7 @@ final class UiTapGate {
     private static final class Attempt implements TextWatcher,SpanWatcher,android.text.NoCopySpan {
         final WeakReference<Activity> activity;final WeakReference<View> button,root,fragmentRoot,composer,pieRoot;final WeakReference<EditText> editor;
         final WeakReference<Editable> editable;final WeakReference<Object> fragment,listener,manager,pie,context,param;final Object window;
-        final String owner,generation,peer,guild;final int type;final byte[] textHash;final long started=SystemClock.elapsedRealtime();
+        final String owner,generation,peer,guild;final int type;final byte[] textHash;final ComposerTextGate.Snapshot spans;final long started=SystemClock.elapsedRealtime();
         final SendReplayGuard guard=new SendReplayGuard(0,started,REPLAY_MS);
         volatile long revision;volatile boolean cancelled;boolean finished,finishing;
         Attempt(Activity activity,View button,EditText editor,View root,View composer,Binding binding,Object listener,String owner,String generation) throws Exception {
@@ -396,6 +389,8 @@ final class UiTapGate {
             this.editable=new WeakReference<>(editor.getText());this.fragment=new WeakReference<>(binding.fragment);this.fragmentRoot=new WeakReference<>(binding.root);
             this.manager=new WeakReference<>(binding.manager);this.pie=new WeakReference<>(binding.pie);this.context=new WeakReference<>(binding.context);this.param=new WeakReference<>(binding.param);this.pieRoot=new WeakReference<>(binding.pieRoot);
             this.listener=new WeakReference<>(listener);window=button.getWindowToken();this.owner=owner;this.generation=generation;peer=binding.peer;guild=binding.guild;type=binding.type;textHash=hash(editor.getText());
+            spans=ComposerTextGate.snapshot(editor.getText());
+            if(spans==null)throw new IllegalArgumentException("Input spans changed before observing the click");
         }
         void watch() {EditText input=editor.get();Editable text=editable.get();if(input!=null)input.addTextChangedListener(this);if(text!=null)text.setSpan(this,0,text.length(),Spanned.SPAN_INCLUSIVE_INCLUSIVE);}
         void unwatch() {EditText input=editor.get();Editable text=editable.get();try {if(text!=null)text.removeSpan(this);}catch(Throwable ignored){}try {if(input!=null)input.removeTextChangedListener(this);}catch(Throwable ignored){}}

@@ -1,0 +1,1 @@
+PASS installed-candidate embedded module is byte-for-byte identical to tested standalone artifact: 154829 bytes; SHA256=3c0c91792c0514e5b313b871c14f3b6505868175fefe33e8d837b80855c9b74f.
