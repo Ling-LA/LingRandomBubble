@@ -55,9 +55,18 @@ public final class JsonCodec {
                 j.optBoolean("fixed",false), j.optBoolean("avoidRepeat",true),
                 j.optBoolean("groups",true), j.optBoolean("privateChats",true), selected);
     }
+    /** Older builds enabled sending and selected harvested styles without consent. */
+    public static JSONObject migrateSafety(JSONObject j) throws JSONException {
+        if(j.optInt("safetyVersion",0)<1) {
+            j.put("enabled",false).put("collect",false).put("safetyVersion",1);
+            JSONArray rows=j.getJSONArray("bubbles");
+            for(int i=0;i<rows.length();i++) rows.getJSONObject(i).put("selected",false);
+        }
+        return j;
+    }
     public static JSONObject defaults() {
         try {
-            return new JSONObject().put("schema",1).put("enabled",false).put("collect",false)
+            return new JSONObject().put("schema",1).put("safetyVersion",1).put("enabled",false).put("collect",false)
                     .put("fixed",false).put("avoidRepeat",true).put("groups",true)
                     .put("privateChats",true).put("bubbles",new JSONArray());
         } catch (JSONException e) { throw new IllegalStateException(e); }

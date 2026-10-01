@@ -1,0 +1,2 @@
+PASS cold first settings visit: exactly one Ling entry; QFun, JavaPlugin, cache-cleaner preserved; independent module application absent.
+PASS final package check: independent module io.github.ling.randombubble absent; temporary test package removed.

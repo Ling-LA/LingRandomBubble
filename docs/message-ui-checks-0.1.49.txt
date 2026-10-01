@@ -1,0 +1,13 @@
+PASS LingBubble-current-49-A-1002-01: sent; visible exact history copies=1; composer verified
+PASS cross-conversation: entered authorized buddy chat without sending; composer untouched.
+PASS LingBubble-current-49-B-1002-02: sent; visible exact history copies=1; composer verified
+PASS LingBubble-current-49-B-1002-02: sent; visible exact history copies=1; composer verified
+PASS LingBubble-current-49-B-1002-02: sent; visible exact history copies=1; composer verified
+PASS LingBubble-current-49-C-1002-03: sent; visible exact history copies=1; composer verified
+PASS LingBubble-current-49-C-1002-03: sent; visible exact history copies=1; composer verified
+PASS LingBubble-current-49-C-1002-03: sent; visible exact history copies=1; composer verified
+PASS LingBubble-reply-49-D-1002-04: sent; visible exact history copies=1; composer verified
+PASS LingBubble-stale-49-E-1002-05: sent; visible exact history copies=1; composer verified
+PASS LingBubble-guard-49-F-1002-07: draft; visible exact history copies=0; composer verified
+PASS LingBubble-guard-49-G-1002-08: draft; visible exact history copies=0; composer verified
+PASS LingBubble-final-49-H-1002-09: sent; visible exact history copies=1; composer verified

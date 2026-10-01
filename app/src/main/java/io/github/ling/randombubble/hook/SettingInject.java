@@ -1,9 +1,7 @@
 package io.github.ling.randombubble.hook;
 
 import android.app.Application;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
 import dalvik.system.BaseDexClassLoader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -42,11 +40,10 @@ final class SettingInject {
     private Class<?> providerBase;
     private boolean providerBaseMissing;
     private int callbackLogs;
-    private Class<?> groupClass;
     private boolean groupHooked;
-    /** True once a settings page came and went without anyone adding a 模块 group. */
-    private volatile boolean standalone;
+    private final io.github.ling.randombubble.core.IdentityWeakSet ownGroups=new io.github.ling.randombubble.core.IdentityWeakSet();
     private java.lang.ref.WeakReference<Context> lastContext=new java.lang.ref.WeakReference<>(null);
+    private java.lang.ref.WeakReference<List<?>> lastSettingsList=new java.lang.ref.WeakReference<>(null);
     SettingInject(HostRuntime runtime,ClassLoader loader) { this.runtime=runtime; this.loader=loader; }
     boolean install() {
         if(!watchingLoads) watchLoads();
@@ -101,7 +98,9 @@ final class SettingInject {
     }
     private XC_MethodHook listHook() {
         if(listHook!=null) return listHook;
-        listHook=new XC_MethodHook(XC_MethodHook.PRIORITY_HIGHEST) {
+        // Xposed runs after callbacks in reverse priority order: inspect the final list
+        // after ordinary settings contributors before deciding to create our own group.
+        listHook=new XC_MethodHook(Integer.MAX_VALUE) {
             @Override protected void afterHookedMethod(MethodHookParam param) {
                 if(!(param.getResult() instanceof List) || param.args==null) return;
                 Context context=null;
@@ -113,9 +112,16 @@ final class SettingInject {
                 }
                 lastContext=new java.lang.ref.WeakReference<>(context);
                 List<?> result=(List<?>)param.getResult();
+                lastSettingsList=new java.lang.ref.WeakReference<>(result);
                 try {
                     if(!result.isEmpty() && result.get(0)!=null) hookGroup(result.get(0).getClass());
+                    result=deduplicate(result);
+                    param.setResult(result);
+                    lastSettingsList=new java.lang.ref.WeakReference<>(result);
                     insert(context,result);
+                    result=deduplicate(result);
+                    param.setResult(result);
+                    lastSettingsList=new java.lang.ref.WeakReference<>(result);
                 } catch(Throwable e) { runtime.log("设置入口失败 "+e.getClass().getSimpleName()); }
             }
         };
@@ -124,8 +130,6 @@ final class SettingInject {
     /** Other modules may add the 模块 group after us; join it while it is being constructed. */
     private void hookGroup(Class<?> type) {
         if(groupHooked) return;
-        groupHooked=true;
-        groupClass=type;
         XC_MethodHook hook=new XC_MethodHook() {
             @Override protected void beforeHookedMethod(MethodHookParam param) {
                 Object[] args=param.args;
@@ -134,12 +138,23 @@ final class SettingInject {
                 try { args[0]=joinGroupItems((List<?>)args[0]); }
                 catch(Throwable e) { runtime.log("加入模块分组失败 "+e.getClass().getSimpleName()); }
             }
+            @Override protected void afterHookedMethod(MethodHookParam param) {
+                if(!param.hasThrowable() && containsTitle(param.thisObject,TITLE)) {
+                    // The constructor may run before another module inserts its group in the list.
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        if(containsTitle(lastSettingsList.get(),TITLE)) runtime.settingInstalled=true;
+                    });
+                }
+            }
         };
-        try { XposedBridge.hookAllConstructors(type,hook); runtime.log("已监听设置分组 "+type.getSimpleName()); }
+        try { XposedBridge.hookAllConstructors(type,hook); groupHooked=true; runtime.log("已监听设置分组 "+type.getSimpleName()); }
         catch(Throwable e) { runtime.log("监听设置分组失败 "+e.getClass().getSimpleName()); }
     }
     private List<?> joinGroupItems(List<?> items) throws ReflectiveOperationException {
         if(containsTitle(items,TITLE)) return items;
+        // Another contributor can construct a second 模块 group after our provider
+        // callback already inserted a standalone group. One entry per complete page.
+        if(containsTitle(lastSettingsList.get(),TITLE)) return items;
         Object sample=items.isEmpty()?null:items.get(0);
         Context context=sample==null?null:findContext(sample);
         if(context==null) context=lastContext.get();
@@ -148,11 +163,9 @@ final class SettingInject {
         if(sample!=null) item=makeItem(sample.getClass(),context,TITLE);
         if(item==null && itemClass!=null) item=makeItem(itemClass,context,TITLE);
         if(item==null) { runtime.log("无法为模块分组创建条目"); return items; }
-        bindClick(item,context);
+        if(!bindClick(item,context)) return items;
         List<Object> joined=new ArrayList<>(items);
         joined.add(item);
-        runtime.settingInstalled=true;
-        runtime.log("已加入 QQ 设置的模块分组");
         return joined;
     }
     private static Context findContext(Object item) {
@@ -167,7 +180,7 @@ final class SettingInject {
     }
     @SuppressWarnings("unchecked")
     private void insert(Context context,List<?> result) throws ReflectiveOperationException {
-        if(containsTitle(result,TITLE)) return;
+        if(containsTitle(result,TITLE)) { runtime.settingInstalled=true; return; }
         boolean settingsPage=false;
         for(String mark:new String[]{"模块","功能","隐私","通用","消息通知","账号与安全","QFun"}) settingsPage|=containsTitle(result,mark);
         if(!settingsPage) {
@@ -175,16 +188,6 @@ final class SettingInject {
             return;
         }
         Object moduleGroup=findGroup(result,"模块");
-        if(moduleGroup==null && !standalone) {
-            // Give other modules this pass to add their 模块 group; if nobody does, build our own next time.
-            final List<?> snapshot=result;
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                if(runtime.settingInstalled || containsTitle(snapshot,"模块")) return;
-                standalone=true;
-                runtime.log("未发现模块分组，下次打开设置时自建");
-            });
-            return;
-        }
         Object sampleItem=moduleGroup==null?null:firstItem(moduleGroup);
         if(sampleItem==null) {
             for(Object group:result) {
@@ -196,7 +199,7 @@ final class SettingInject {
         Object item=makeItem(sampleItem.getClass(),context,TITLE);
         if(item==null && itemClass!=null) item=makeItem(itemClass,context,TITLE);
         if(item==null) { runtime.log("无法创建 QQ 设置条目"); return; }
-        bindClick(item,context);
+        if(!bindClick(item,context)) return;
         if(moduleGroup!=null) {
             List<Object> items=itemList(moduleGroup);
             if(items!=null) {
@@ -214,6 +217,7 @@ final class SettingInject {
         items.add(item);
         Object group=newGroup(template,items,"模块");
         if(group==null) { runtime.log("无法创建模块分组"); return; }
+        if(moduleGroup==null || ownGroups.contains(moduleGroup)) ownGroups.add(group);
         if(moduleGroup!=null) {
             int index=result.indexOf(moduleGroup);
             if(index>=0) ((List<Object>)result).set(index,group);
@@ -222,7 +226,52 @@ final class SettingInject {
         runtime.settingInstalled=true;
         runtime.log("已添加 QQ 设置模块入口");
     }
-    private void bindClick(Object item,Context context) throws ReflectiveOperationException {
+    /** Deduplicate the complete result, not just a constructor's temporary item list. */
+    private List<?> deduplicate(List<?> groups) throws ReflectiveOperationException {
+        Object retainedGroup=null;
+        int retainedIndex=-1, bestScore=Integer.MAX_VALUE, count=0;
+        for(Object group:groups) {
+            List<Object> items=itemList(group);
+            if(items==null) continue;
+            int score=containsTitle(group,"QFun")?0:(ownGroups.contains(group)?2:1);
+            for(int i=0;i<items.size();i++) if(containsTitle(items.get(i),TITLE)) {
+                count++;
+                if(score<bestScore) {bestScore=score;retainedGroup=group;retainedIndex=i;}
+            }
+        }
+        if(count<=1) return groups;
+        List<Object> result=new ArrayList<>(groups);
+        for(int g=result.size()-1;g>=0;g--) {
+            Object group=result.get(g);
+            List<Object> items=itemList(group);
+            if(items==null) continue;
+            List<Object> kept=new ArrayList<>(items.size());
+            for(int i=0;i<items.size();i++) {
+                Object item=items.get(i);
+                if(!containsTitle(item,TITLE) || (group==retainedGroup && i==retainedIndex)) kept.add(item);
+            }
+            if(kept.size()==items.size()) continue;
+            // A singleton Ling group is also recognized if a cached result predates our tracking.
+            boolean ours=ownGroups.contains(group) || (items.size()==1 && containsTitle(group,"模块") && containsTitle(items.get(0),TITLE));
+            if(kept.isEmpty() && ours) result.remove(g);
+            else replaceItems(group,items,kept);
+        }
+        runtime.settingInstalled=containsTitle(result,TITLE);
+        runtime.log("QQ 设置入口去重，保留已有模块分组中的一条");
+        return result;
+    }
+    /** Preserve other modules' group instance, header and items, including immutable lists. */
+    private static void replaceItems(Object group,List<Object> previous,List<Object> replacement) throws ReflectiveOperationException {
+        for(Class<?> type=group.getClass();type!=null && type!=Object.class;type=type.getSuperclass()) {
+            for(Field field:type.getDeclaredFields()) {
+                if(Modifier.isStatic(field.getModifiers()) || !List.class.isAssignableFrom(field.getType())) continue;
+                field.setAccessible(true);
+                if(field.get(group)==previous) {field.set(group,replacement);return;}
+            }
+        }
+        throw new NoSuchFieldException("设置分组条目列表");
+    }
+    private boolean bindClick(Object item,Context context) throws ReflectiveOperationException {
         Class<?> function=Class.forName("kotlin.jvm.functions.Function0",false,loader);
         Class<?> unitClass=Class.forName("kotlin.Unit",false,loader);
         Object unit=unitClass.getField("INSTANCE").get(null);
@@ -240,24 +289,17 @@ final class SettingInject {
                 if(params.length==1 && function.isAssignableFrom(params[0]) && method.getReturnType()==void.class) {
                     method.setAccessible(true);
                     method.invoke(item,proxy);
-                    return;
+                    return true;
                 }
             }
         }
         runtime.log("设置条目没有点击回调");
+        return false;
     }
-    /** The standalone app exists only on LSPosed-style installs; embedded installs get an in-process panel. */
+    /** All QQ entries open the in-process panel, including embedded-only LSPatch installs. */
     private void open(Context context) {
         android.app.Activity activity=activityOf(context);
         if(activity==null) activity=runtime.currentActivity();
-        if(runtime.bridge.appReachable()) {
-            try {
-                Intent intent=new Intent();
-                intent.setComponent(new ComponentName("io.github.ling.randombubble","io.github.ling.randombubble.ui.MainActivity"));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                if(context.getPackageManager().resolveActivity(intent,0)!=null) { context.startActivity(intent); return; }
-            } catch(Throwable ignored) { /* fall back to the in-process panel */ }
-        }
         if(activity==null) { runtime.log("没有可用的界面打开设置面板"); return; }
         runtime.log("打开模块设置面板");
         SettingsPanel.show(activity,runtime);
@@ -285,9 +327,15 @@ final class SettingInject {
     private static Object newGroup(Object sample,List<Object> items,String title) {
         for(Constructor<?> ctor:sample.getClass().getDeclaredConstructors()) {
             Class<?>[] params=ctor.getParameterTypes();
-            if(params.length<4 || !List.class.isAssignableFrom(params[0]) || params[1]!=String.class || params[2]!=String.class || params[3]!=int.class) continue;
+            if(params.length<4 || !List.class.isAssignableFrom(params[0]) || !titleParameter(params[1]) || !titleParameter(params[2]) || params[3]!=int.class) continue;
             Object[] args=new Object[params.length];
             args[0]=items; args[1]=title; args[2]=""; args[3]=Integer.valueOf(0);
+            boolean supported=true;
+            for(int i=4;i<params.length;i++) if(params[i].isPrimitive()) {
+                if(params[i]==int.class) args[i]=Integer.valueOf(0);
+                else { supported=false; break; }
+            }
+            if(!supported) continue;
             try { ctor.setAccessible(true); return ctor.newInstance(args); }
             catch(Throwable ignored) { /* next constructor */ }
         }
@@ -326,9 +374,14 @@ final class SettingInject {
         List<Class<?>> found=new ArrayList<>();
         String[] known={
                 "com.tencent.mobileqq.setting.main.NewSettingConfigProvider",
-                "com.tencent.mobileqq.setting.main.MainSettingConfigProvider"
+                "com.tencent.mobileqq.setting.main.MainSettingConfigProvider",
+                "com.tencent.mobileqq.setting.main.b"
         };
         for(String name:known) rememberProvider(found,name);
+        try {
+            Class<?> type=Class.forName("com.tencent.mobileqq.setting.processor.i",false,loader);
+            if(looksLikeItem(type)) itemClass=type;
+        } catch(Throwable ignored) { /* optional version-specific simple item */ }
         List<String> names=settingClassNames();
         int examined=0;
         for(String name:names) {
@@ -362,10 +415,11 @@ final class SettingInject {
     private static boolean looksLikeItem(Class<?> type) {
         for(Constructor<?> ctor:type.getDeclaredConstructors()) {
             Class<?>[] params=ctor.getParameterTypes();
-            if(params.length>=4 && Context.class.isAssignableFrom(params[0]) && params[1]==int.class && params[2]==String.class && params[3]==int.class) return true;
+            if(params.length>=4 && Context.class.isAssignableFrom(params[0]) && params[1]==int.class && titleParameter(params[2]) && params[3]==int.class) return true;
         }
         return false;
     }
+    private static boolean titleParameter(Class<?> type) { return type==String.class || type==CharSequence.class; }
     private List<String> dexEntries(String prefix) {
         List<String> names=new ArrayList<>();
         for(ClassLoader current=loader; current!=null; current=current.getParent()) {
@@ -495,6 +549,7 @@ final class SettingInject {
     }
     @SuppressWarnings("unchecked")
     private static List<Object> itemList(Object group) throws IllegalAccessException {
+        if(group==null) return null;
         for(Class<?> type=group.getClass(); type!=null && type!=Object.class; type=type.getSuperclass()) {
             for(Field field:type.getDeclaredFields()) {
                 if(Modifier.isStatic(field.getModifiers()) || !List.class.isAssignableFrom(field.getType())) continue;

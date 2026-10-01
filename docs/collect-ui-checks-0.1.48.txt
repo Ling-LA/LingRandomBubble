@@ -1,0 +1,6 @@
+PASS LingBubble-collect-48-D-1002-04: sent; visible exact history copies=1; composer verified
+PASS LingBubble-revert-48-E-1002-07: draft; visible exact history copies=0; composer verified
+PASS LingBubble-background-48-F-1002-06: draft; visible exact history copies=0; composer verified
+PASS LingBubble-leave-48-G-1002-08: draft; visible exact history copies=0; composer verified
+PASS LingBubble-reopen-48-H-1002-09: sent; visible exact history copies=1; composer verified
+PASS LingBubble-restored-48-I-1002-10: sent; visible exact history copies=1; composer verified

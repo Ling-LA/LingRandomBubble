@@ -208,8 +208,8 @@ final class MenuCollector {
             if(specs.isEmpty()) message="这条消息没有可收藏的气泡";
             else {
                 String status=runtime.bridge.favorite(specs.get(0));
-                if("added".equals(status)) message="已收藏。之后点发送会使用收藏的气泡";
-                else if("selected".equals(status)) message="这个气泡已在库中，并会用于发送";
+                if("added".equals(status)) message="已收藏。请到设置勾选，并手动开启发送";
+                else if("selected".equals(status)) message="这个气泡已在库中；发送开关保持原样";
                 else message="收藏没有写入："+status;
             }
         } catch(Throwable e) {

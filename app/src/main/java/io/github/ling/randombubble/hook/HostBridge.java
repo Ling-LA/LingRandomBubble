@@ -23,66 +23,144 @@ final class HostBridge {
     private final HostRuntime runtime;
     private final Map<String,BubbleSpec> pending=new LinkedHashMap<>();
     private final Map<String,Boolean> seen=new LinkedHashMap<String,Boolean>() {
-        @Override protected boolean removeEldestEntry(Map.Entry<String,Boolean> e) { return size()>256; }
+        @Override protected boolean removeEldestEntry(Map.Entry<String,Boolean> e) { return size()>4096; }
     };
     private final ScheduledExecutorService executor=Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t=new Thread(r,"LingBubble-Sync"); t.setDaemon(true); return t;
     });
+    private final ScheduledExecutorService controls=Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t=new Thread(r,"LingBubble-Timer");t.setDaemon(true);return t;
+    });
     volatile Config config=Config.off();
     private final AccountLibrary library;
+    private final HostSettings settings;
+    private volatile boolean localReady;
+    private volatile long controlHeartbeat;
+    private volatile boolean hostOrigin=true;
+    private volatile org.json.JSONObject controlSnapshot=new org.json.JSONObject();
+    private volatile String controlOwner="unknown";
+    private volatile long ticks,syncFailures;
+    private final Object controlLock=new Object();
+    private long editEpoch;
     private String lastBridgeError="";
     /** False once the standalone module app turned out to be unreachable (embedded NPatch install). */
     private volatile boolean appReachable=true;
+    private volatile boolean providerEverConnected;
     private volatile long nextProviderTry;
+    private volatile long lastProviderSuccess;
+    private volatile String providerOwner="unknown";
     private File logFile;
     interface Edit { void apply(org.json.JSONObject document) throws Exception; }
     /** Applies one change from the in-QQ settings panel to this account's library. Returns an error text or null. */
-    synchronized String edit(Edit change) {
+    synchronized String edit(Edit change) {return editForAccount(library.account(),change);}
+    synchronized String editForAccount(String owner,Edit change) {
         try {
-            org.json.JSONObject document=library.document();
-            change.apply(document);
-            config=library.store(document);
-            String failure=saveFailure();
-            runtime.log("设置已更新 样式 "+config.selected.size()+failure);
-            return failure.isEmpty()?null:failure.trim();
-        } catch(Exception e) {
-            return e.getMessage()==null?e.getClass().getSimpleName():e.getMessage();
+            checkOwner(owner);org.json.JSONObject document=library.document();change.apply(document);
+            document.put("enabled",false);config=library.store(document);
+            String failure=library.takeSaveError();if(failure!=null)throw new IllegalStateException(failure);
+            settings.libraryEdited(owner);editEpoch++;runtime.log("QQ 内设置已保存；勾选 "+config.selected.size());return null;
+        }catch(Exception e){return message(e);}
+    }
+    synchronized org.json.JSONObject document() {
+        try {refreshAccount();return library.document();}catch(Exception e){return JsonCodec.defaults();}
+    }
+    synchronized String accountIdentity() {refreshAccount();return library.account();}
+    synchronized org.json.JSONObject decorationSettings() {
+        try {refreshAccount();return settings.decoration(library.account());}catch(Exception e){return new org.json.JSONObject();}
+    }
+    synchronized String selectedDecorationIds() {
+        java.util.LinkedHashSet<Integer> ids=new java.util.LinkedHashSet<>();
+        org.json.JSONArray rows=document().optJSONArray("bubbles");
+        if(rows!=null)for(int i=0;i<rows.length();i++){org.json.JSONObject row=rows.optJSONObject(i);if(row!=null && row.optBoolean("selected") && row.optInt("bubbleId")>0)ids.add(row.optInt("bubbleId"));}
+        StringBuilder out=new StringBuilder();for(int id:ids){if(out.length()>0)out.append(',');out.append(id);}return out.toString();
+    }
+    synchronized String configureDecoration(String ids,int seconds,boolean automatic,boolean manual) {
+        return configureDecorationForAccount(library.account(),ids,seconds,automatic,manual);
+    }
+    synchronized String configureDecorationForAccount(String owner,String ids,int seconds,boolean automatic,boolean manual) {
+        return configureDecorationForAccount(owner,ids,seconds,automatic,manual,false);
+    }
+    synchronized String configureDecorationForAccount(String owner,String ids,int seconds,boolean automatic,boolean manual,boolean perMessage) {
+        try {checkOwner(owner);synchronized(controlLock){settings.configure(owner,io.github.ling.randombubble.store.DecorationCodec.create(owner,ids,seconds,automatic,manual,perMessage));editEpoch++;pollLocal();}return null;}
+        catch(Exception e){return message(e);}
+    }
+    synchronized String stopDecoration() {return stopDecorationForAccount(library.account());}
+    synchronized String stopDecorationForAccount(String owner) {
+        try {checkOwner(owner);synchronized(controlLock){settings.configure(owner,io.github.ling.randombubble.store.DecorationCodec.stopped(settings.decoration(owner),owner));editEpoch++;pollLocal();}return null;}
+        catch(Exception e){return message(e);}
+    }
+    private synchronized boolean refreshAccount() {
+        boolean changed=library.refresh(context);
+        if(changed) {
+            editEpoch++;runtime.permit.clear();pending.clear();seen.clear();localReady=false;
+            Config stored=library.configOrNull();config=stored==null?Config.off():stored;
+        }
+        return changed;
+    }
+    private void checkOwner(String expected) {
+        refreshAccount();String current=library.account();io.github.ling.randombubble.store.DecorationCodec.owner(current);
+        if(!current.equals(expected))throw new IllegalStateException("账号已变化，请重新打开面板");
+    }
+    private static String message(Exception error) {return error.getMessage()==null?error.getClass().getSimpleName():error.getMessage();}
+    boolean controlsHealthy() {
+        return localReady && android.os.SystemClock.elapsedRealtime()-controlHeartbeat<10000L
+            && (hostOrigin || (runtime.bridgeHealthy && controlOwner.equals(providerOwner)
+                && android.os.SystemClock.elapsedRealtime()-lastProviderSuccess<15000L)) && controlOwner.equals(AccountRef.current(context));
+    }
+    String controlSource() {return hostOrigin?"QQ 本机":"独立应用同步";}
+    boolean perMessageEnabled() {return runtime.versionSupported && controlSnapshot.optBoolean("perMessage",false);}
+    org.json.JSONObject controlSettings() {
+        try {return new org.json.JSONObject(controlSnapshot.toString());}catch(Exception e){return new org.json.JSONObject();}
+    }
+    String timerStatus() {return "心跳 "+ticks+"；同步异常 "+syncFailures+"；最近心跳 "+Math.max(0,(android.os.SystemClock.elapsedRealtime()-controlHeartbeat)/1000)+" 秒前";}
+    boolean generationCurrent(String owner,String generation) {
+        try {return owner.equals(AccountRef.current(context)) && generation.equals(settings.decoration(owner).optString("generation"));}catch(Throwable e){return false;}
+    }
+    private void pollLocal() {
+        synchronized(controlLock) {
+        try {
+            String owner=AccountRef.current(context);if("unknown".equals(owner)){localReady=false;return;}
+            String raw=settings.take(owner);org.json.JSONObject snapshot=new org.json.JSONObject(raw);
+            hostOrigin=settings.hostControlled(owner);controlOwner=owner;controlSnapshot=snapshot;
+            controlHeartbeat=android.os.SystemClock.elapsedRealtime();localReady=true;ticks++;
+            runtime.decoration.poll(raw,owner);
+        }catch(Throwable e){localReady=false;runtime.setError("QQ 内配置："+e.getClass().getSimpleName());}
         }
     }
-    org.json.JSONObject document() {
-        try { return library.document(); } catch(Exception e) { return JsonCodec.defaults(); }
-    }
     boolean appReachable() { return appReachable; }
+    boolean canSend() { return !providerEverConnected || runtime.bridgeHealthy; }
     void writeLog(String row) {
+        try { executor.execute(() -> appendLog(row)); }
+        catch(Throwable ignored) { /* diagnostics must not interrupt a send */ }
+    }
+    private void appendLog(String row) {
         try {
             if(logFile==null) {
-                File dir=context.getExternalFilesDir(null);
-                if(dir==null) dir=context.getFilesDir();
+                File dir=context.getFilesDir();
+                if(dir==null) dir=context.getExternalFilesDir(null);
+                if(dir==null) return;
                 logFile=new File(dir,"LingRandomBubble-log.txt");
-                try {
-                    File download=new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"LingRandomBubble-log.txt");
-                    if(download.getParentFile()!=null) download.getParentFile().mkdirs();
-                    logFile=download;
-                } catch(Throwable ignored) { /* keep the app-specific file */ }
             }
-            try(FileOutputStream out=new FileOutputStream(logFile,true)) {
+            try(FileOutputStream out=new FileOutputStream(logFile,logFile.length()<262144)) {
                 out.write((row+"\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
             }
         } catch(Throwable ignored) { /* logging must not affect sending */ }
     }
-    String logPath() { return logFile==null?"Download/LingRandomBubble-log.txt":logFile.getAbsolutePath(); }
+    String logPath() { return logFile==null?"QQ 应用私有目录（可在面板复制诊断）":logFile.getAbsolutePath(); }
     String libraryMask() { return library==null?"未识别账号":library.mask(); }
     HostBridge(Context context,HostRuntime runtime) {
-        this.context=context; this.runtime=runtime; this.library=new AccountLibrary(context);
+        this.context=context; this.runtime=runtime; this.library=new AccountLibrary(context); this.settings=new HostSettings(context);
     }
     void start() {
-        executor.scheduleWithFixedDelay(this::sync,3000,2500,TimeUnit.MILLISECONDS);
-        executor.schedule(this::scanLocal,6,TimeUnit.SECONDS);
+        controls.scheduleWithFixedDelay(this::pollLocal,1000,1000,TimeUnit.MILLISECONDS);
+        executor.scheduleWithFixedDelay(this::safeSync,3000,2500,TimeUnit.MILLISECONDS);
     }
-    void loadAccount() {
+    private void safeSync() {
+        try {sync();}catch(Throwable e){syncFailures++;runtime.setError("库同步暂缓："+e.getClass().getSimpleName());}
+    }
+    synchronized void loadAccount() {
         try {
-            boolean changed=library.refresh(context);
-            prepareSending();
+            boolean changed=refreshAccount();
             Config stored=library.configOrNull();
             if(stored!=null && (changed || config.selected.isEmpty())) config=stored;
             int styles=stored==null?0:stored.selected.size();
@@ -90,38 +168,22 @@ final class HostBridge {
         } catch(Throwable ignored) { /* never take down QQ while resolving the account */ }
     }
     String favorite(BubbleSpec b) {
-        boolean added=remember(b);
-        if(!providerDue()) return added?"added":"selected";
-        try {
-            Bundle request=new Bundle();
-            request.putString("account",library.account());
-            request.putString("favorite",JsonCodec.encode(b).toString());
-            request.putString("library",library.json());
-            request.putString("diagnostics",runtime.report());
-            Bundle result=context.getContentResolver().call(ConfigProvider.URI,"sync",null,request);
-            if(result==null) throw new IllegalStateException("Missing provider reply");
-            adopt(JsonCodec.config(result.getString("config")));
-            if(result.getString("config")!=null) library.replaceJson(configJson());
-            runtime.bridgeHealthy=true; lastBridgeError=""; appReachable=true;
-            String status=result.getString("favoriteStatus");
-            return status==null?(added?"added":"selected"):status;
-        } catch(Throwable e) {
-            noteBridge(e);
-            return added?"added":"selected";
-        }
+        boolean added; synchronized(this){added=remember(b);}
+        try {executor.execute(this::sync);}catch(Throwable ignored){}
+        return added?"added":"selected";
     }
     private void adopt(Config next) {
-        if(next.selected.isEmpty() && !config.selected.isEmpty())
-            config=new Config(true,config.collect,config.fixed,config.avoidRepeat,config.groups,config.privateChats,config.selected);
-        else config=next;
+        if(!next.enabled || next.fixed!=config.fixed || next.groups!=config.groups
+                || next.privateChats!=config.privateChats || !next.selected.equals(config.selected)) runtime.permit.clear();
+        config=next;
     }
     private boolean remember(BubbleSpec b) {
-        library.refresh(context);
-        java.util.ArrayList<BubbleSpec> before=new java.util.ArrayList<>(config.selected);
-        boolean added=!before.contains(b);
+        refreshAccount();
+        boolean added=true;
+        try {org.json.JSONArray rows=library.document().getJSONArray("bubbles");for(int i=0;i<rows.length();i++)if(JsonCodec.decode(rows.getJSONObject(i)).key().equals(b.key())){added=false;break;}}catch(Exception ignored){}
         Config next=library.add(b,config);
         if(next!=null) config=next;
-        runtime.bridgeHealthy=true;
+        if(added)editEpoch++;
         java.util.HashSet<String> looks=new java.util.HashSet<>();
         for(BubbleSpec s:config.selected) if(s!=null) looks.add(io.github.ling.randombubble.core.BubblePicker.visual(s));
         String saved=saveFailure();
@@ -133,25 +195,20 @@ final class HostBridge {
     synchronized void offer(BubbleSpec b) { harvest(b); }
     /** Bubbles seen while reading chat. Written locally; the standalone app is not required. */
     synchronized void harvest(BubbleSpec b) {
-        if(b==null || !config.collect || seen.containsKey(b.key()) || pending.containsKey(b.key())) return;
+        if(b==null || !config.collect || pending.size()>=256 || seen.containsKey(b.key()) || pending.containsKey(b.key())) return;
         pending.put(b.key(),b);
     }
-    private void flushHarvest() {
+    private synchronized void flushHarvest() {
         Map<String,BubbleSpec> batch;
         synchronized(this) {
             if(!config.collect || pending.isEmpty()) return;
             batch=new LinkedHashMap<>(pending);
             pending.clear();
         }
-        int added=0;
-        for(BubbleSpec b:batch.values()) {
-            int before=config.selected.size();
-            Config next=library.add(b,config);
-            if(next!=null) config=next;
-            if(config.selected.size()>before) added++;
-            synchronized(this) { seen.put(b.key(),Boolean.TRUE); }
-        }
-        if(added>0) runtime.log("自动收录 "+added+" 种 样式 "+config.selected.size()+saveFailure());
+        String before=library.json();Config next=library.addAll(batch.values(),config);
+        if(next!=null)config=next;
+        if(!java.util.Objects.equals(before,library.json()))editEpoch++;
+        for(BubbleSpec b:batch.values())seen.put(b.key(),Boolean.TRUE);
     }
     private void scanLocal() {
         try {
@@ -166,52 +223,52 @@ final class HostBridge {
             runtime.log("本地气泡素材 "+found.size()+" 个，新入库 "+added+" 样式 "+config.selected.size()+saveFailure());
         } catch(Throwable e) { runtime.log("扫描本地气泡失败 "+e.getClass().getSimpleName()); }
     }
-    /** One-time correction after the invisible switches turned fixed mode on by accident. */
-    private void prepareSending() {
-        try {
-            org.json.JSONObject doc=library.document();
-            if(doc.optBoolean("panelReady",false)) return;
-            doc.put("collect",true);
-            doc.put("fixed",false);
-            doc.put("enabled",true);
-            doc.put("groups",true);
-            doc.put("privateChats",true);
-            doc.put("avoidRepeat",true);
-            doc.put("panelReady",true);
-            config=library.store(doc);
-            runtime.log("已改为随机发送，并打开自动收录"+saveFailure());
-        } catch(Throwable e) { runtime.log("初始化发送方式失败 "+e.getClass().getSimpleName()); }
-    }
     private void sync() {
-        flushHarvest();
-        if(library.refresh(context)) {
-            Config stored=library.configOrNull();
-            if(stored!=null) config=stored;
-            runtime.log("切换账号气泡库 "+library.mask()+" 样式 "+(stored==null?0:stored.selected.size())+saveFailure());
-        }
-        if(!providerDue()) return;
-        Map<String,BubbleSpec> batch;
-        synchronized(this) { batch=new LinkedHashMap<>(pending); }
-        try {
-            JSONArray a=new JSONArray(); for(BubbleSpec b:batch.values()) a.put(JsonCodec.encode(b));
-            Bundle request=new Bundle();             request.putString("account",library.account());
-            request.putString("candidates",a.toString());
-            request.putString("library",library.json());
-            request.putString("diagnostics",runtime.report());
-            Bundle result=context.getContentResolver().call(ConfigProvider.URI,"sync",null,request);
-            if(result==null) throw new IllegalStateException("Missing provider reply");
-            Config next=JsonCodec.config(result.getString("config"));
-            boolean captureChanged=next.collect!=config.collect;
-            adopt(next);
-            synchronized(this) {
-                for(String key:batch.keySet()) { pending.remove(key); seen.put(key,Boolean.TRUE); }
-                if(captureChanged) { seen.clear(); if(!next.collect) pending.clear(); }
+        refreshAccount();flushHarvest();
+        final String owner,libraryJson,decorationJson;
+        final boolean dirtyLibrary,dirtyDecoration;
+        final long epoch;
+        synchronized(this) {
+            if(refreshAccount()) {
+                editEpoch++;runtime.permit.clear();Config stored=library.configOrNull();config=stored==null?Config.off():stored;
+                runtime.log("切换账号气泡库 "+library.mask()+" 样式 "+config.selected.size()+saveFailure());
             }
-            runtime.bridgeHealthy=true; lastBridgeError=""; appReachable=true;
-        } catch(Throwable e) {
-            noteBridge(e);
-            // Keep the last collected bubbles. A failed sync must not put the account bubble back.
+            owner=library.account();epoch=editEpoch;
+            if("unknown".equals(owner)){localReady=false;return;}
+            libraryJson=library.json();
+            try {dirtyLibrary=settings.dirtyLibrary(owner);dirtyDecoration=settings.dirtyDecoration(owner);decorationJson=settings.decoration(owner).toString();}
+            catch(Exception e){localReady=false;runtime.setError("QQ 内配置读取失败 "+e.getClass().getSimpleName());return;}
         }
+        if(!providerAvailable()) {runtime.bridgeHealthy=false;appReachable=false;return;}
+        if(!providerDue()) return;
+        try {
+            // Avoid Binder's transaction limit. Large libraries remain managed in QQ.
+            boolean controlsOnly=libraryJson!=null && libraryJson.length()>131072;
+            Bundle request=new Bundle();request.putString("account",owner);request.putBoolean("controlsOnly",controlsOnly);request.putString("diagnostics",runtime.report());
+            if(!controlsOnly)request.putString("library",libraryJson);
+            if(!controlsOnly && dirtyLibrary && libraryJson!=null)request.putString("hostConfig",libraryJson);
+            if(dirtyDecoration) {org.json.JSONObject mirror=new org.json.JSONObject(decorationJson);mirror.remove("command");mirror.remove("expires");request.putString("hostDecoration",mirror.toString());}
+            Bundle result=context.getContentResolver().call(ConfigProvider.URI,"sync",null,request);
+            if(result==null)throw new IllegalStateException("Missing provider reply");
+            synchronized(this) {
+                refreshAccount();
+                if(!owner.equals(library.account()) || epoch!=editEpoch)return;
+                boolean librarySaved=result.containsKey("config") && (!dirtyLibrary || result.getBoolean("hostConfigSaved")),decorationSaved=!dirtyDecoration || result.getBoolean("hostDecorationSaved");
+                if(librarySaved) {
+                    String reply=result.getString("config");Config next=JsonCodec.config(reply);boolean captureChanged=next.collect!=config.collect;
+                    library.replaceJson(reply);String failure=library.takeSaveError();if(failure!=null)throw new IllegalStateException(failure);adopt(next);
+                    if(captureChanged){seen.clear();if(!next.collect)pending.clear();}
+                }
+                if(decorationSaved)settings.adopt(owner,result.getString("decoration"));
+                settings.acknowledged(owner,dirtyLibrary && librarySaved,dirtyDecoration && decorationSaved);
+                runtime.bridgeHealthy=true;providerEverConnected=true;lastBridgeError="";appReachable=true;
+                providerOwner=owner;lastProviderSuccess=android.os.SystemClock.elapsedRealtime();
+            }
+        }catch(Throwable e){noteBridge(e);}
+    }
+    private boolean providerAvailable() {
+        try {return context.getPackageManager().resolveContentProvider(ConfigProvider.AUTHORITY,0)!=null;}
+        catch(Throwable e){return false;}
     }
     private boolean providerDue() {
         return appReachable || android.os.SystemClock.uptimeMillis()>=nextProviderTry;
@@ -223,11 +280,13 @@ final class HostBridge {
     private void noteBridge(Throwable e) {
         String name=e.getClass().getSimpleName();
         runtime.setError("配置桥接失败："+name);
-        // Unknown authority: the module APK is embedded into QQ and its own app is not installed.
-        nextProviderTry=android.os.SystemClock.uptimeMillis()+120000;
+        runtime.bridgeHealthy=false;
+        runtime.permit.clear();
+        // A stopped/restarted provider is transient, not proof of embedded-only mode.
+        nextProviderTry=android.os.SystemClock.uptimeMillis()+2500;
         if(appReachable) {
             appReachable=false;
-            runtime.log("模块独立 App 不可达（"+name+"），配置只保存在 QQ 本地，设置面板在 QQ 内显示");
+            runtime.log("可选独立应用同步暂不可达（"+name+"）；QQ 本机控制仍可使用");
         }
         if(!name.equals(lastBridgeError)) {
             lastBridgeError=name;

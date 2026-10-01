@@ -1,0 +1,4 @@
+PASS after actual COLD QQ start: exact original 213 IDs and seconds=60 persisted; perMessage=True; IDs SHA256=314b0eb0ba67858b56e1580a12de980736e1fbec8ed1e400d4087f52ac20b61f.
+PASS fresh native panel: automatic=false, perMessage=true, collect=false; library=2449 >= original2371; selected=2102 unchanged; new harvested rows retained unselected.
+PASS fresh native panel: automatic=false, perMessage=true, collect=false; library=2449 >= original2371; selected=2102 unchanged; new harvested rows retained unselected.
+PASS independent module/test apps absent as before; USB stay_on_while_plugged_in=0 unchanged; QQ data not cleared.

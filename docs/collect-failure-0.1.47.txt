@@ -1,0 +1,116 @@
+Ling 随机气泡 0.1.47
+QQ：9.3.50
+账号：已遮盖
+版本门控：匹配目标
+发送接口：true
+转发回避接口：true
+原消息识别接口：true
+收藏菜单：true 注入次数：2
+QQ设置入口：true
+发送按钮观察：true
+配置桥接：false
+QQ 内配置：true；来源 QQ 本机
+轮换计时：心跳 2178；同步异常 0；最近心跳 0 秒前
+逐消息延后 / 恢复 / 取消：14 / 14 / 0
+账号装扮切换：逐消息已开启；等待普通文字发送点击
+
+有效发送点击：0
+已替换发送参数：0
+复读/转发/原对象跳过：3
+未知来源调用栈跳过：0
+无匹配点击跳过：0
+非普通文字/聊天类型跳过：0
+开关/适配条件不满足：23
+原消息访问次数：1106866
+属性处理异常：0
+读取到气泡模板次数：694448
+最近诊断：无
+
+最近未知来源类/方法（无参数）：
+未出现
+
+运行日志（不含正文）：
+02:33:28 正在核对商城使用权益 2151400
+02:33:29 商城权益字段类型：authret Integer，payForbidden Integer
+02:33:29 权益已确认，提交商城正常设置 2151400
+02:33:29 核对服务器当前装扮 2151400
+02:33:29 商城权益字段类型：authret Integer，payForbidden Integer
+02:33:29 账号装扮 气泡 2151400 / 子气泡 0
+02:33:29 服务器已确认账号气泡 2151400；字体保留
+02:33:29 逐消息服务器确认后恢复原发送点击一次
+02:33:39 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:33:39 逐消息物理点击已延后，等待商城确认
+02:33:39 正在核对商城使用权益 2133651
+02:33:40 商城权益字段类型：authret Integer，payForbidden Integer
+02:33:40 权益已确认，提交商城正常设置 2133651
+02:33:40 核对服务器当前装扮 2133651
+02:33:40 商城权益字段类型：authret Integer，payForbidden Integer
+02:33:40 账号装扮 气泡 2133651 / 子气泡 0
+02:33:40 服务器已确认账号气泡 2133651；字体保留
+02:33:40 逐消息服务器确认后恢复原发送点击一次
+02:34:00 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:34:00 逐消息物理点击已延后，等待商城确认
+02:34:00 正在核对商城使用权益 114
+02:34:00 商城权益字段类型：authret Integer，payForbidden Integer
+02:34:00 权益已确认，提交商城正常设置 114
+02:34:00 核对服务器当前装扮 114
+02:34:00 商城权益字段类型：authret Integer，payForbidden Integer
+02:34:00 账号装扮 气泡 114 / 子气泡 0
+02:34:00 服务器已确认账号气泡 114；字体保留
+02:34:00 逐消息服务器确认后恢复原发送点击一次
+02:34:27 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:34:27 逐消息物理点击已延后，等待商城确认
+02:34:27 正在核对商城使用权益 2104058
+02:34:27 商城权益字段类型：authret Integer，payForbidden Integer
+02:34:27 权益已确认，提交商城正常设置 2104058
+02:34:27 核对服务器当前装扮 2104058
+02:34:28 商城权益字段类型：authret Integer，payForbidden Integer
+02:34:28 账号装扮 气泡 2104058 / 子气泡 0
+02:34:28 服务器已确认账号气泡 2104058；字体保留
+02:34:28 逐消息服务器确认后恢复原发送点击一次
+02:34:45 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:34:45 逐消息物理点击已延后，等待商城确认
+02:34:45 正在核对商城使用权益 2016046
+02:34:45 商城权益字段类型：authret Integer，payForbidden Integer
+02:34:45 权益已确认，提交商城正常设置 2016046
+02:34:45 核对服务器当前装扮 2016046
+02:34:46 商城权益字段类型：authret Integer，payForbidden Integer
+02:34:46 账号装扮 气泡 2016046 / 子气泡 0
+02:34:46 服务器已确认账号气泡 2016046；字体保留
+02:34:46 逐消息服务器确认后恢复原发送点击一次
+02:37:33 设置回调 b.f
+02:37:33 已添加 QQ 设置模块入口
+02:37:34 打开模块设置面板
+02:37:39 QQ 内设置已保存；勾选 2102
+02:40:31 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:40:31 逐消息会话匹配失败：contexts=12,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:40:31 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:43:37 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:43:37 逐消息会话匹配失败：contexts=6,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:43:37 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:45:14 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:45:14 逐消息会话匹配失败：contexts=7,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:45:14 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:47:47 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:47:47 逐消息会话匹配失败：contexts=9,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:47:47 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:47:48 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:47:48 逐消息会话匹配失败：contexts=9,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:47:48 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:47:51 设置回调 b.f
+02:47:51 已添加 QQ 设置模块入口
+02:47:52 打开模块设置面板
+02:47:53 QQ 内设置已保存；勾选 2102
+02:47:57 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:47:57 逐消息会话匹配失败：contexts=10,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:47:57 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:47:58 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+02:47:58 逐消息会话匹配失败：contexts=10,frames=2,contacts=2,matches=multiple,fieldTypes=d:java.lang.Integer,e:java.lang.String,f:java.lang.String
+02:47:58 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+02:50:06 设置回调 b.f
+02:50:06 已添加 QQ 设置模块入口
+02:50:08 打开模块设置面板
+
+
+“已替换发送参数”不代表服务器已接受，更不代表对方已看到。
+仅统计计数和接口状态；不记录正文、QQ号、群号或令牌。

@@ -25,7 +25,10 @@ public final class ConfigProvider extends ContentProvider {
         authorize();
         if(!"sync".equals(method)) throw new IllegalArgumentException("Unknown method");
         Repository repo=Repository.get(getContext());
+        synchronized(repo) {
+        if(Binder.getCallingUid()!=Process.myUid())DecorationCodec.owner(extras==null?null:extras.getString("account"));
         String favoriteStatus=null;
+        boolean hostConfigSaved=false,hostDecorationSaved=false;
         if(extras!=null) {
             repo.useAccount(extras.getString("account"));
             String favorite=extras.getString("favorite");
@@ -34,12 +37,23 @@ public final class ConfigProvider extends ContentProvider {
                 catch(JSONException e) { favoriteStatus=e.getMessage()==null?"气泡数据无效":e.getMessage(); }
             }
             try { repo.observe(extras.getString("candidates")); } catch(JSONException ignored) { /* reject malformed batch */ }
-            try { repo.importHost(extras.getString("library")); } catch(JSONException ignored) { /* keep the module copy */ }
+            if(!extras.getBoolean("controlsOnly"))try { repo.importHost(extras.getString("library")); } catch(JSONException ignored) { /* keep the module copy */ }
             repo.diagnostics(extras.getString("diagnostics"));
+            if(Binder.getCallingUid()!=Process.myUid()) {
+                String hostConfig=extras.getString("hostConfig"),hostDecoration=extras.getString("hostDecoration");
+                if(hostConfig!=null) {try {repo.acceptHostConfig(hostConfig);hostConfigSaved=true;}catch(Exception ignored) {}}
+                if(hostDecoration!=null) {try {repo.acceptHostDecoration(hostDecoration);hostDecorationSaved=true;}catch(Exception ignored) {}}
+            }
         }
-        Bundle reply=new Bundle(); reply.putString("config",repo.snapshot().toString());
+        Bundle reply=new Bundle();
+        if(extras==null || !extras.getBoolean("controlsOnly")) {
+            String snapshot=repo.snapshot().toString();if(snapshot.length()<=131072)reply.putString("config",snapshot);
+        }
+        if(Binder.getCallingUid()!=Process.myUid()) reply.putString("decoration",repo.takeDecoration());
+        reply.putBoolean("hostConfigSaved",hostConfigSaved);reply.putBoolean("hostDecorationSaved",hostDecorationSaved);
         if(favoriteStatus!=null) reply.putString("favoriteStatus",favoriteStatus);
         return reply;
+        }
     }
     @Override public Cursor query(Uri u,String[] p,String s,String[] a,String sort) { authorize(); throw new UnsupportedOperationException(); }
     @Override public String getType(Uri u) { authorize(); return "application/json"; }

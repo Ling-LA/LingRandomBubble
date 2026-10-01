@@ -1,0 +1,13 @@
+Final device UI verification; selection restored afterward
+Initial: 共 1440 项 · 已勾选 2 项 · 匹配 1440 项
+第 1 / 72 页，每页 20 项
+Select all: 共 1444 项 · 已勾选 1444 项 · 匹配 1444 项
+第 1 / 73 页，每页 20 项
+Next page: 共 1444 项 · 已勾选 1444 项 · 匹配 1444 项
+第 2 / 73 页，每页 20 项
+Deselect all: 共 1446 项 · 已勾选 0 项 · 匹配 1446 项
+第 2 / 73 页，每页 20 项
+Search 2173887: 共 1446 项 · 已勾选 0 项 · 匹配 41 项
+第 1 / 3 页，每页 20 项
+Select all while filtered: 共 1446 项 · 已勾选 1446 项 · 匹配 41 项
+第 1 / 3 页，每页 20 项

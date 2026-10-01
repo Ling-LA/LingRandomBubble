@@ -29,7 +29,7 @@ import java.nio.charset.StandardCharsets;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-/** Native, standalone settings. No widgets or long-press entries are inserted into QQ. */
+/** Standalone settings; QQ's embedded panel works independently. */
 public final class MainActivity extends Activity {
     private static final int EXPORT=1,IMPORT=2,EXPORT_LOG=3;
     private Repository repo;
@@ -77,27 +77,29 @@ public final class MainActivity extends Activity {
         });
         scroll.requestApplyInsets();
         text("Ling 随机气泡",28,true);
-        text("0.1.19 · 实验版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
-        text("在 QQ 里长按别人的消息，点「收藏气泡」。之后自己点发送，会把收藏的气泡参数写进这条新消息。请用另一台 QQ 确认对方能看到。",14,false);
+        text(io.github.ling.randombubble.BuildConfig.VERSION_NAME+" · 实机验证版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
+        text("已通过 QQ 9.3.50 双端实测：账号装扮切换可被未安装模块的接收端看到。请在诊断中确认服务器结果；编号仍需具有使用权益。",14,false);
+        section("账号装扮切换");
+        text("计时和逐消息默认关闭，可独立开启。低频建议 1800 秒，高频建议 60 秒，可自行配置 60 至 86400 秒。逐消息会等待商城确认后发送，增加账号设置请求。",14,false);
+        JSONObject decoration=repo.decorationSettings();
+        text((decoration.optBoolean("automatic",false)?"计时轮换开启 · 间隔 "+decoration.optInt("seconds",1800)+" 秒":"计时轮换关闭")+" · 逐消息"+(decoration.optBoolean("perMessage",false)?"开启":"关闭"),14,false);
+        button("配置手动 / 低频 / 高频切换",this::decorationDialog);
+        button("停止轮换（计时 / 逐消息）",() -> {
+            JSONObject settings=repo.decorationSettings();
+            JSONArray ids=settings.optJSONArray("ids");
+            if(ids!=null && ids.length()>0) repo.configureDecoration(ids.join(","),settings.optInt("seconds",1800),false,false,false);
+            Toast.makeText(this,"已停止计时和逐消息轮换；已提交的装扮请求可能仍会完成",Toast.LENGTH_LONG).show(); render();
+        });
         JSONObject j=repo.snapshot();
         section("开关");
-        toggle(j,"enabled","启用发送气泡","收藏后会自动打开。只处理点发送按钮的新普通文字；不处理键盘回车、自动回复、复读或转发。");
-        toggle(j,"collect","浏览时也采集","可选。打开后滚动到有气泡的消息会入库，但默认不参与发送。长按菜单的「收藏气泡」会直接参与发送。");
-        toggle(j,"fixed","固定模式","开启：使用列表中第一个勾选项。关闭：从所有勾选项随机选择。");
-        toggle(j,"avoidRepeat","避免连续重复","随机模式下至少勾选两种不同气泡才有意义；只影响本次进程中的正常新消息。");
-        toggle(j,"groups","用于群聊","仍需正常点击发送；QFun 的 +1 原样放行。");
-        toggle(j,"privateChats","用于好友私聊","陌生人临时会话、频道等不在首版范围。");
+        toggle(j,"collect","浏览时也采集","只记录样式线索；采集编号不等于账号拥有该装扮权益。");
         section("气泡库");
-        text("勾选参与随机的气泡。关闭固定模式时，每条新消息从勾选项里随机，并尽量不连续重复。长按库内条目可改名或删除。不修改 QFun 的 +1。",14,false);
-        button("刷新气泡库与状态",this::render);
-        try {
-            JSONArray a=j.getJSONArray("bubbles");
-            text(a.length()+" 个气泡",13,false);
-            if(a.length()==0) text("暂无气泡。到 QQ 长按一条有气泡的消息，点「收藏气泡」。",15,false);
-            for(int i=0;i<a.length();i++) addBubbleRow(a.getJSONObject(i));
-        } catch(Exception e) { text("读取气泡库失败："+e.getClass().getSimpleName(),14,false); }
+        text("气泡库仅作编号参考，长按可改名或删除。账号装扮轮换请在上方独立配置，服务器仍会校验使用权益。",14,false);
+        JSONArray library=j.optJSONArray("bubbles");
+        text((library==null?0:library.length())+" 个气泡；搜索、分页和批量勾选请打开气泡库。",14,false);
+        button("打开气泡库（搜索 / 全选）",()->startActivity(new Intent(this,BubbleLibraryActivity.class)));
         section("备份与诊断");
-        text("运行日志保存在手机的 Download/LingRandomBubble-log.txt。打开 QQ 时不再弹出提示。也可以点下面的按钮导出。",14,false);
+        text("运行日志保存在 QQ 应用目录，可通过下面的诊断按钮查看并导出。诊断在配置应用重启后仍可读取。",14,false);
         button("导出气泡库 JSON",() -> {
             Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                     .setType("application/json").putExtra(Intent.EXTRA_TITLE,"LingRandomBubble-library.json");
@@ -116,10 +118,38 @@ public final class MainActivity extends Activity {
         button("清空气泡库并关闭功能",() -> new AlertDialog.Builder(this).setTitle("清空气泡库？")
                 .setMessage("将关闭发送及采集开关。不会删除 QQ 的消息，也不会修改 QFun 配置。")
                 .setNegativeButton("取消",null).setPositiveButton("清空",(d,w)->execute(()->{repo.clearLibrary();render();})).show());
-        section("严格回避规则（不可关闭）");
-        text("① 转发路径不改发送参数。\n② 已读取的原消息对象直接跳过。\n③ 识别到 QFun / 复读调用栈直接跳过。\n④ 只有正常点“发送”的一次性匹配许可才能改气泡。\n⑤ 接口缺失、版本不符、配置读取失败时，保留原消息。",14,false);
-        text("默认不开启。不包含联网、广告、遥测或登录功能；不会获取 Cookie、密码或支付信息。QQ 模块仍可能触发账号风控，本项目不承诺零风险。",13,false);
+        section("运行保护");
+        text("只在 QQ 前台且屏幕解锁时处理。请求失败后停止；逐消息失败保留输入，文本或会话变化取消发送。仅支持点击发送按钮的普通文字，不支持附件、Enter 或脚本消息。勾选和全选不会开启功能。",13,false);
         scroll.post(()->scroll.scrollTo(0,y));
+    }
+    private void decorationDialog() {
+        JSONObject settings=repo.decorationSettings();
+        LinearLayout form=new LinearLayout(this); form.setOrientation(LinearLayout.VERTICAL); form.setPadding(dp(20),dp(8),dp(20),dp(8));
+        EditText ids=new EditText(this); ids.setMaxLines(3); ids.setTextSize(14); ids.setHint("有权使用的气泡编号，逗号分隔");
+        String selected=repo.selectedDecorationIds();
+        JSONArray existing=settings.optJSONArray("ids"); if(!selected.isEmpty()) ids.setText(selected); else if(existing!=null) try { ids.setText(existing.join(",")); } catch(Exception ignored) {}
+        form.addView(ids);
+        CheckBox perMessage=new CheckBox(this); perMessage.setText("逐消息切换（普通文字）"); perMessage.setChecked(settings.optBoolean("perMessage",false)); form.addView(perMessage);
+        android.widget.Spinner mode=new android.widget.Spinner(this);
+        mode.setAdapter(new android.widget.ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"手动切换","低频自动轮换","高频自动轮换"}));
+        int seconds=settings.optInt("seconds",1800); mode.setSelection(settings.optBoolean("automatic")?(seconds<1800?2:1):0); form.addView(mode);
+        EditText interval=new EditText(this); interval.setInputType(InputType.TYPE_CLASS_NUMBER); interval.setHint("间隔秒数：60 至 86400"); interval.setText(String.valueOf(seconds)); form.addView(interval);
+        mode.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            boolean initial=true;
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id) {
+                if(initial) { initial=false; return; }
+                if(position==1) interval.setText("1800"); else if(position==2) interval.setText("60");
+            }
+        });
+        TextView hint=new TextView(this); hint.setText("手动切换到第一个编号；自动模式随机轮换。逐消息可单独开启（计时选手动），至少需要两款。点击发送后等待商城确认新装扮，再继续本次发送；失败保留输入，文本或会话变化取消发送。仅支持普通文字，不支持附件、Enter 或脚本消息。设置修改整个账号，增加账号设置请求；请确认气泡使用权益。"); form.addView(hint);
+        ScrollView formScroll=new ScrollView(this); formScroll.addView(form);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("账号装扮配置").setView(formScroll).setNegativeButton("取消",null).setPositiveButton("保存并执行",null).create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> execute(() -> {
+            boolean each=perMessage.isChecked();
+            repo.configureDecoration(ids.getText().toString(),Integer.parseInt(interval.getText().toString()),mode.getSelectedItemPosition()!=0,mode.getSelectedItemPosition()==0 && !each,each);
+            dialog.dismiss(); Intent qq=getPackageManager().getLaunchIntentForPackage("com.tencent.mobileqq"); if(qq!=null) startActivity(qq);
+        }))); dialog.show();
     }
     private void addBubbleRow(JSONObject row) throws Exception {
         BubbleSpec b=JsonCodec.decode(row); String name=row.optString("name",b.label());
@@ -159,7 +189,7 @@ public final class MainActivity extends Activity {
             try {
                 String message;
                 if(request==EXPORT || request==EXPORT_LOG) {
-                    String body=request==EXPORT?repo.exportLibrary():"Ling 随机气泡 0.1.19 运行日志\n不含聊天正文、QQ号或群号。\n\n"+repo.diagnostics();
+                    String body=request==EXPORT?repo.exportLibrary():"Ling 随机气泡 "+io.github.ling.randombubble.BuildConfig.VERSION_NAME+" 运行日志\n不含聊天正文、QQ号或群号。\n\n"+repo.diagnostics();
                     try(OutputStream out=getContentResolver().openOutputStream(uri,"wt")) {
                         if(out==null) throw new IllegalStateException("无法打开输出文件");
                         out.write(body.getBytes(StandardCharsets.UTF_8));

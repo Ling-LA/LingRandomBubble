@@ -1,0 +1,115 @@
+最近进程报告：0 秒前
+
+Ling 随机气泡 0.1.44-experimental
+QQ：9.3.50
+账号：已遮盖
+版本门控：匹配目标
+发送接口：true
+转发回避接口：true
+原消息识别接口：true
+收藏菜单：true 注入次数：0
+QQ设置入口：false
+发送按钮观察：true
+配置桥接：true
+账号装扮切换：服务器已确认账号气泡 2176246；字体保留
+
+有效发送点击：0
+已替换发送参数：0
+复读/转发/原对象跳过：0
+未知来源调用栈跳过：0
+无匹配点击跳过：0
+非普通文字/聊天类型跳过：0
+开关/适配条件不满足：2
+原消息访问次数：18709
+属性处理异常：0
+读取到气泡模板次数：24597
+最近诊断：配置桥接失败：IllegalArgumentException
+
+最近未知来源类/方法（无参数）：
+未出现
+
+运行日志（不含正文）：
+22:50:44 商城权益字段类型：authret Integer，payForbidden Integer
+22:50:44 权益已确认，提交商城正常设置 2153379
+22:50:44 商城 PB 请求 MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x942d_0 字段 [stBubble, stUniBusinessItem, commonParam]
+22:50:44 商城 PB请求.stBubble 字段 [deltype]
+22:50:44 商城 PB请求.stUniBusinessItem 字段 [appid, itemid]
+22:50:44 商城 PB请求.stUniBusinessItem itemid=2153379
+22:50:44 商城 PB请求.stUniBusinessItem appid=2
+22:50:44 商城 PB请求.commonParam 字段 [source, iOpplat, sClientIp, sClientVer, setUpItemSign]
+22:50:44 商城 PB 参数数量 5
+22:50:44 商城 PB 命令字段 0=MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x942d_0
+22:50:44 商城 PB 回复 MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x942d_0 参数数 3
+22:50:44 商城 PB 结果 0=0
+22:50:44 商城 PB ret=0
+22:50:44 商城 PB 响应字段 [ret, errmsg, stHamletItem, url, stHamletItemList, feetype, validDay, extraAid, extraappinfo, extragameinfo]
+22:50:44 商城 PB回复 ret=0
+22:50:44 商城 PB回复.stHamletItem 字段 [uid, locationtype, itemlist]
+22:50:44 商城 PB回复.extraAid 字段 [android_aid, ios_aid, pay_type, month, err_msg]
+22:50:44 商城 PB回复.extraappinfo 字段 [svip_level, svip_month]
+22:50:44 商城 PB回复.extragameinfo 字段 [gameappid, loginurl, gamevia, gamepkgname, gameappname]
+22:50:44 商城设置返回成功，核对服务器当前装扮 2153379
+22:50:44 商城 PB 请求 MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x9716_0 字段 [appId, itemId, filter, qua]
+22:50:44 商城 PB请求 itemId=2153379
+22:50:44 商城 PB请求 appId=2
+22:50:44 商城 PB请求.filter 字段 [needAuth, needLike, needDesigner, needUsing]
+22:50:44 商城 PB 参数数量 5
+22:50:44 商城 PB 命令字段 0=MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x9716_0
+22:50:44 商城 PB 回复 MQUpdateSvc_com_qq_vip_zb.web.OidbSvcTrpcJsapiTcp.0x9716_0 参数数 3
+22:50:44 商城 PB 结果 0=0
+22:50:44 商城 PB ret=0
+22:50:44 商城 PB 响应字段 [baseInfo, images, descInfo, mallInfo, extInfo, authInfo, isSetup, designerModule, mainImage, likeInfo, actInfo, recomExtInfo, extraAppInfo, customInfo, adTrialInfo]
+22:50:44 商城 PB回复.baseInfo 字段 [appId, itemId, itemName, feeType, secId]
+22:50:44 商城 PB回复.baseInfo itemId=2153379
+22:50:44 商城 PB回复.baseInfo appId=2
+22:50:44 商城 PB回复.images[] 字段 [mainColor, imageUrl, imageWidth, imageHeight]
+22:50:44 商城 PB回复.descInfo 字段 [publishTime, fileSize, generalDesc, manualDesc, labels, instructions]
+22:50:44 商城 PB回复.descInfo.labels[] 字段 [name, jumpUrl, fontColor, backgroundColor]
+22:50:44 商城 PB回复.descInfo.labels[] 字段 [name, jumpUrl, fontColor, backgroundColor]
+22:50:44 商城 PB回复.mallInfo 字段 [price, isOnShelf, isShow, payForbidden, productId]
+22:50:44 商城 PB回复.extInfo 字段 [customInfo]
+22:50:44 商城 PB回复.authInfo 字段 [authret, authmsg, authurl, isOwn, validTo]
+22:50:44 商城 PB回复.designerModule 字段 [designer, items]
+22:50:44 商城 PB回复.designerModule.designer 字段 [id, type, name, avatar, groupId, thumbnail, desc, rawAvatar]
+22:50:44 商城 PB回复.designerModule.designer type=1
+22:50:44 商城 PB回复.designerModule.items[] 字段 [baseInfo, images, mallInfo, customInfo, mainImage]
+22:50:44 商城 PB回复.designerModule.items[].baseInfo 字段 [appId, itemId, itemName, feeType, secId]
+22:50:44 商城 PB回复.designerModule.items[].baseInfo itemId=2177162
+22:50:44 商城 PB回复.designerModule.items[].baseInfo appId=2
+22:50:44 商城 PB回复.designerModule.items[].images[] 字段 [mainColor, imageUrl, imageWidth, imageHeight]
+22:50:44 商城 PB回复.designerModule.items[].mallInfo 字段 [price, isOnShelf, isShow, payForbidden, productId]
+22:50:44 商城 PB回复.designerModule.items[].customInfo 字段 [bubbleGroup, bubbleType, cornType, diyTextPos, extQualDay, immersiveMaterial, isAiContent, isDiy, isLinkage, isWithNotificationIcon, platformId, showGif, showGifNew, vipLevel]
+22:50:44 商城 PB回复.designerModule.items[].mainImage 字段 [mainColor, imageUrl, imageWidth, imageHeight]
+22:50:44 商城 PB回复.designerModule.items[] 字段 [baseInfo, images, mallInfo, customInfo, mainImage]
+22:50:44 商城 PB回复.designerModule.items[].baseInfo 字段 [appId, itemId, itemName, feeType, secId]
+22:50:44 商城 PB回复.designerModule.items[].baseInfo itemId=2177160
+22:50:44 商城 PB回复.designerModule.items[].baseInfo appId=2
+22:50:44 商城 PB回复.designerModule.items[].images[] 字段 [mainColor, imageUrl, imageWidth, imageHeight]
+22:50:44 商城 PB回复.designerModule.items[].mallInfo 字段 [price, isOnShelf, isShow, payForbidden, productId]
+22:50:44 商城 PB回复.designerModule.items[].customInfo 字段 [bubbleGroup, bubbleType, cornType, diyTextPos, extQualDay, immersiveMaterial, isAiContent, isDiy, isLinkage, isWithNotificationIcon, platformId, showGif, showGifNew, vipLevel]
+22:50:44 商城 PB回复.designerModule.items[].mainImage 字段 [mainColor, imageUrl, imageWidth, imageHeight]
+22:50:44 商城 PB回复.mainImage 字段 [mainColor, imageUrl, imageWidth, imageHeight]
+22:50:44 商城 PB回复.likeInfo 字段 [cnt, isLike]
+22:50:44 商城 PB回复.actInfo 字段 [url, endTime, isActive, startTime]
+22:50:44 商城 PB回复.recomExtInfo 字段 []
+22:50:44 商城 PB回复.extraAppInfo 字段 [extrainfo, extraappinfo]
+22:50:44 商城 PB回复.extraAppInfo.extrainfo 字段 [isOnShelf, strxyjson, mallurl, mallname, faceHashId, headurl, sourceId, productName, productIcon, price, validDay, svipLevel, svipMonth, isShow, limitFree, isHideItemDetailPage, actDesc, actURL, collaboratorID]
+22:50:44 商城 PB回复.extraAppInfo.extraappinfo 字段 [fontType, specialType, desc, usableScene, hideWordName, styleid, ringid, funcallOplist, diyEffectFont, extraInfo, multOperationType, isUsingNftFace, miniVersion, maxVersion]
+22:50:44 商城 PB回复.extraAppInfo.extraappinfo.diyEffectFont 字段 [bgImageUrl, clipImageUrl, overImageUrl, descConfig]
+22:50:44 商城 PB回复.extraAppInfo.extraappinfo.extraInfo 字段 []
+22:50:44 商城 PB回复.customInfo 字段 [bubbleGroup, bubbleType, cornType, diyTextPos, extQualDay, immersiveMaterial, isAiContent, isDiy, isLinkage, isWithNotificationIcon, platformId, showGif, showGifNew, vipLevel]
+22:50:44 商城权益字段类型：authret Integer，payForbidden Integer
+22:50:44 账号装扮 气泡 2153379 / 子气泡 0
+22:50:44 服务器已确认账号气泡 2153379；字体保留
+22:50:51 配置 App 暂不可达（IllegalArgumentException），2.5 秒后重试；已连接过的桥接失联时暂停替换
+22:54:29 正在核对商城使用权益 2176246
+22:54:29 商城权益字段类型：authret Integer，payForbidden Integer
+22:54:29 权益已确认，提交商城正常设置 2176246
+22:54:30 商城设置返回成功，核对服务器当前装扮 2176246
+22:54:30 商城权益字段类型：authret Integer，payForbidden Integer
+22:54:30 账号装扮 气泡 2176246 / 子气泡 0
+22:54:30 服务器已确认账号气泡 2176246；字体保留
+
+
+“已替换发送参数”不代表服务器已接受，更不代表对方已看到。
+仅统计计数和接口状态；不记录正文、QQ号、群号或令牌。

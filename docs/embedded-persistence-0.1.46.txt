@@ -1,0 +1,1 @@
+PASS host settings after APK replacement and QQ cold start: pool 2153379,2173887; interval 60 seconds; automatic mode retained; independent module application absent.

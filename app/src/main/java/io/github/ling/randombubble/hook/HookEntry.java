@@ -82,6 +82,7 @@ public final class HookEntry implements IXposedHookLoadPackage {
             try { settings.install(); }
             catch(Throwable e) { runtime.log("设置入口初始化失败 "+e.getClass().getSimpleName()); }
             installOwnBubble();
+            try {runtime.decoration.install(loader);}catch(Throwable e){runtime.log("商城接口初始化失败 "+e.getClass().getSimpleName());}
             XposedBridge.log("[LingBubble] initialize QQ="+runtime.qqVersion+" targetMatched="+runtime.versionSupported);
             installTapObserver();
             runtime.bridge.start();
@@ -95,7 +96,7 @@ public final class HookEntry implements IXposedHookLoadPackage {
         }
         app.registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
             @Override public void onActivityResumed(Activity a) { if(runtime!=null) runtime.resumed(a); attemptHooks(); }
-            @Override public void onActivityPaused(Activity a) { if(runtime!=null){ runtime.permit.clear(); taps.reset(); } }
+            @Override public void onActivityPaused(Activity a) { if(runtime!=null){ runtime.permit.clear(); taps.reset(); runtime.paused(a); } }
             @Override public void onActivityCreated(Activity a,Bundle b) {}
             @Override public void onActivityStarted(Activity a) {}
             @Override public void onActivityStopped(Activity a) {}
@@ -107,6 +108,18 @@ public final class HookEntry implements IXposedHookLoadPackage {
     }
     private void installTapObserver() {
         try {
+            Class<?> aio=Class.forName("com.tencent.aio.runtime.AIOContextImpl",false,loader);
+            XposedBridge.hookAllConstructors(aio,new XC_MethodHook(){
+                @Override protected void afterHookedMethod(MethodHookParam p){if(!p.hasThrowable())taps.observeAio(p.thisObject);}
+            });
+            XposedHelpers.findAndHookMethod(android.view.View.class,"performClick",new XC_MethodHook(){
+                @Override protected void beforeHookedMethod(MethodHookParam p){
+                    try {if(taps.deferClick((android.view.View)p.thisObject))p.setResult(Boolean.TRUE);}
+                    catch(Throwable e){runtime.setError("逐消息发送观察："+e.getClass().getSimpleName());}
+                }
+            });
+        }catch(Throwable e){runtime.setError("逐消息发送接口："+e.getClass().getSimpleName());}
+        try {
             XposedHelpers.findAndHookMethod(Activity.class,"dispatchTouchEvent",MotionEvent.class,new XC_MethodHook() {
                 @Override protected void beforeHookedMethod(MethodHookParam p) {
                     taps.event((Activity)p.thisObject,(MotionEvent)p.args[0]);
@@ -114,40 +127,40 @@ public final class HookEntry implements IXposedHookLoadPackage {
             });
             runtime.tapInstalled=true;
         } catch(Throwable e) { runtime.setError("发送按钮接口："+e.getClass().getSimpleName()); }
+        // QQ/skin overrides can bypass Activity's base dispatch method. Observe
+        // only the exact send_btn view as it receives the same physical gesture.
+        try {
+            XposedHelpers.findAndHookMethod(android.view.View.class,"dispatchTouchEvent",MotionEvent.class,new XC_MethodHook() {
+                @Override protected void beforeHookedMethod(MethodHookParam p) {
+                    taps.sendViewEvent((android.view.View)p.thisObject,(MotionEvent)p.args[0]);
+                }
+            });
+            runtime.tapInstalled=true;
+        } catch(Throwable e) { runtime.setError("发送控件触摸接口："+e.getClass().getSimpleName()); }
     }
     private void installOwnBubble() {
         try {
             Class<?> svip=Class.forName("com.tencent.mobileqq.app.SVIPHandler",false,loader);
+            XposedBridge.hookAllConstructors(svip,new XC_MethodHook() {
+                @Override protected void afterHookedMethod(MethodHookParam p) { runtime.decoration.observe(p.thisObject); }
+            });
             int hooked=0;
             for(Method method:svip.getDeclaredMethods()) {
                 String name=method.getName().toLowerCase(java.util.Locale.ROOT);
                 if(method.getReturnType()!=int.class || !name.contains("bubbleid")) continue;
                 boolean sub=name.contains("sub");
                 XposedBridge.hookMethod(method,new XC_MethodHook() {
-                    @Override protected void beforeHookedMethod(MethodHookParam param) {
-                        probeEquipped(param,sub);
-                        BubbleSpec spec=runtime.currentBubble();
-                        if(spec==null) return;
-                        Integer value=sub?spec.subBubbleId:spec.bubbleId;
-                        if(value!=null && value>0) param.setResult(value);
+                    @Override protected void afterHookedMethod(MethodHookParam param) {
+                        // Observe the real account decoration; never fake a global getter.
+                        runtime.decoration.observe(param.thisObject);
+                        if(!param.hasThrowable() && param.getResult() instanceof Integer)
+                            runtime.equipped(sub,(Integer)param.getResult());
                     }
                 });
                 hooked++;
             }
             runtime.log(hooked==0?"没有找到自己的气泡接口":"已挂上自己的气泡接口 "+hooked);
         } catch(Throwable e) { runtime.log("自己的气泡接口失败 "+e.getClass().getSimpleName()); }
-    }
-    private final long[] lastProbe=new long[2];
-    /** The account's real bubble, read past our own hook at most every two seconds. */
-    private void probeEquipped(XC_MethodHook.MethodHookParam param,boolean sub) {
-        int slot=sub?1:0;
-        long now=android.os.SystemClock.uptimeMillis();
-        if(now-lastProbe[slot]<2000) return;
-        lastProbe[slot]=now;
-        try {
-            Object value=XposedBridge.invokeOriginalMethod(param.method,param.thisObject,param.args);
-            if(value instanceof Integer) runtime.equipped(sub,(Integer)value);
-        } catch(Throwable ignored) { /* diagnostics only */ }
     }
     private void installMenu() {
         if(runtime.menuInstalled) return;

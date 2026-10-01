@@ -1,0 +1,1 @@
+PASS zipalign -c -P 16 4: current QQ embedded 0.1.47 candidate

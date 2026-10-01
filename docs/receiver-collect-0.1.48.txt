@@ -1,0 +1,27 @@
+Ling Random Bubble 0.1.48 receiver confirmation
+Date: 2026-10-02 (Asia/Shanghai)
+Target: QQ 9.3.50 / LSPatch 1.2 integrated module; no standalone module app on sender.
+Receiver: the user-arranged receiver has not installed this module.
+
+Authorized test messages in group "测试":
+A: LingBubble-collect-48-A-1002-01; collect=false; server confirmed bubble 2173887.
+B: LingBubble-collect-48-B-1002-02; collect=true; server confirmed bubble 2153379.
+Sender evidence: docs/collect-a-0.1.48.txt and docs/collect-b-0.1.48.txt.
+After B the sender reports held/resumed/cancelled=2/2/0; each original physical click resumed once after official server/cache confirmation.
+C-03: sender diagnostics docs/collect-c-0.1.48.txt confirm bubble 2173887 at 03:03:57 and cumulative held/resumed/cancelled=3/3/0.
+
+User feedback for these two messages: “两条样式不同，重进后仍保留”.
+The feedback confirms that A and B had different bubble styles on the receiver, and the styles remained after the receiver exited and re-entered the conversation.
+Source: direct user reply relayed by the parent task; receiver feedback is distinct from sender server/cache diagnostics.
+
+The user then provided a receiver screenshot showing 03:04. Manual observation relayed by the parent task:
+A-01: cyan dinosaur decoration (sender-confirmed 2173887).
+B-02: white/purple avatar-style decoration (sender-confirmed 2153379).
+C-03: cyan dinosaur decoration, visually matching A.
+Each of the three marked messages appears once in this screenshot; A/C match and B differs.
+The screenshot remains private and is excluded from the source package; no private image path is published here.
+C re-entry persistence was not separately confirmed. The earlier re-entry feedback applies only to A/B.
+
+Scope: receiver appearance of A/B/C in the supplied screenshot, and user-confirmed re-entry persistence of A/B only.
+This does not establish repeated wrappers>1, cancellation guards, all bubble candidates, long-term stability, other send paths, Android fixture results, or the final configuration restore.
+No receiver account, conversation identifier, private screenshot, authentication data, or unrelated message text is included.

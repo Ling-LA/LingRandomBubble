@@ -1,0 +1,102 @@
+警告: [options] 源值 8 已过时，将在未来发行版中删除
+警告: [options] 目标值 8 已过时，将在未来发行版中删除
+警告: [options] 要隐藏有关已过时选项的警告, 请使用 -Xlint:-options。
+3 个警告
+PASS decoration intervals include both preset boundaries
+PASS decoration intervals reject sub-minute and above-day values
+PASS decoration IDs deduplicate before rotation validation
+PASS manual decoration may use one style and stopped defaults may be empty
+PASS timer and per-message modes each require different styles
+PASS decoration ID parser rejects empty and invalid numeric IDs
+PASS high-frequency timer keeps its final millisecond then becomes due
+PASS future restored timestamp cannot freeze rotation
+PASS restart with an old successful rotation is immediately due
+PASS monotonic timer continues counting down across successive polls
+PASS rotation retry delay retains the configured interval and caps short-interval backoff
+PASS rotation retry delay has a floor even without a configured interval
+PASS low-frequency retry cannot bypass the user's long interval
+PASS deferred send gesture resumes at most once
+PASS concurrent callbacks cannot replay one deferred send twice
+PASS deferred send expires at deadline and cannot recover
+PASS deferred send rejects a backward clock permanently
+PASS editing then restoring text still cancels deferred send
+PASS changed send context consumes the gesture without retry
+PASS equivalent conversation wrappers resolve to one stable binding
+PASS many equivalent conversation observations do not create ambiguity
+PASS value-equal distinct fragments or roots cannot authorize a binding
+PASS every contact tuple field participates in conversation identity
+PASS conflicting conversations cannot be resolved by selecting the newest wrapper
+PASS conversation ambiguity persists after another equivalent old observation
+PASS cleared wrapper references do not change stable conversation identity
+PASS missing real conversation objects fail closed even when both references cleared
+PASS session change consumes deferred send even if the previous tuple returns
+PASS complete live conversation owner chain is consistent
+PASS context belonging to another fragment cannot authorize current conversation
+PASS manager getter and manager field must identify the same live pie
+PASS pie getter and stored context must identify the same live context
+PASS fragment weak current context cannot point to an older wrapper
+PASS pie and current context must share the identical session param
+PASS every missing live chain link fails closed
+PASS value-equal owner links cannot substitute for actual live identities
+PASS stale observation metadata cannot replace the active chain param
+PASS pending send accepts the same current pie context and param
+PASS pending current identity rejects each changed or cleared owner link
+PASS observed active owner switch cancels deferred send even if old chain returns
+PASS permit requires a physical arm
+PASS permit matches exact text once
+PASS permit rejects mismatched text and clears
+PASS permit expires
+PASS permit boundary accepted
+PASS permit rejects backward clock
+PASS permit clear prevents stale use
+PASS blank/null/oversized input never arms
+PASS two concurrent sends cannot consume same permit
+PASS identity set rejects equal-but-different lists
+PASS identity set null safe
+PASS QFun directSend call stack blocked
+PASS QFun send hook is not a repeat
+PASS QFun script send is not a repeat
+PASS normal send with a tap applies when QFun observer is on the stack
+PASS forward stack blocked
+PASS follow/repeater stack blocked
+PASS native composer stack allowed by deny check
+PASS kernel async send with exact tap is applied
+PASS async send without a tap is skipped
+PASS missing stack fails closed
+PASS normal fresh plain text produces replacement
+PASS QFun direct send denied even with matching pending tap
+PASS forward nesting denied even with matching pending tap
+PASS original elements list blocks obfuscated repeater
+PASS reused original attribute map blocks repeat
+PASS copied list with original elements still blocked
+PASS ordinary send without a tap is skipped
+PASS another script changing text consumes and rejects permit
+PASS disabled policy clears pending permit
+PASS unsupported chat type skipped
+PASS mentions skipped
+PASS mixed/photo/voice/reply elements skipped
+PASS missing chat type fails closed and preserves args
+PASS null argument array safe
+PASS empty bubble pool safe
+PASS copy-on-write retains original bubble and attributes
+PASS other map entries preserve identity
+PASS null map uses learned attribute metadata
+PASS new attribute uses outgoing message id
+PASS conflicting VAS key rejects without mutation
+PASS existing bubble keeps its attribute type
+PASS extract contains metadata only
+PASS default/malformed templates ignored
+PASS negative bubble IDs rejected
+PASS nullable fields preserved
+PASS fixed picker picks first selected
+PASS hold reuses one style inside the window
+PASS random picker never immediately repeats with two entries
+PASS one-item random pool valid
+PASS policy never changes message ID/contact/elements/callback
+PASS every new send needs its own tap
+PASS copied map with original attribute blocks repeat
+PASS expired permit cannot change attributes
+PASS two quick sends choose independently
+PASS existing account bubble slot is restyled
+
+RESULT: 96 test groups passed. These are policy/fixture tests, NOT Android builds or QQ device tests.

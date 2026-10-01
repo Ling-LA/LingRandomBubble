@@ -1,0 +1,116 @@
+Ling 随机气泡 0.1.49
+QQ：9.3.50
+账号：已遮盖
+版本门控：匹配目标
+发送接口：true
+转发回避接口：true
+原消息识别接口：true
+收藏菜单：true 注入次数：4
+QQ设置入口：true
+发送按钮观察：true
+配置桥接：false
+QQ 内配置：true；来源 QQ 本机
+轮换计时：心跳 1371；同步异常 0；最近心跳 0 秒前
+逐消息延后 / 恢复 / 取消：7 / 5 / 2
+账号装扮切换：逐消息已开启；等待普通文字发送点击
+
+有效发送点击：0
+已替换发送参数：0
+复读/转发/原对象跳过：0
+未知来源调用栈跳过：0
+无匹配点击跳过：0
+非普通文字/聊天类型跳过：0
+开关/适配条件不满足：5
+原消息访问次数：78513
+属性处理异常：0
+读取到气泡模板次数：72597
+最近诊断：无
+
+最近未知来源类/方法（无参数）：
+未出现
+
+运行日志（不含正文）：
+04:26:16 设置回调 b.f
+04:26:16 已添加 QQ 设置模块入口
+04:26:19 打开模块设置面板
+04:30:36 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:30:36 逐消息已确认 QQ 活动会话：contexts=4,matchingFrames=1,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=0,staleContacts=0,unreadHistorical=0
+04:30:36 逐消息物理点击已延后，等待商城确认
+04:30:36 正在核对商城使用权益 2176246
+04:30:36 商城权益字段类型：authret Integer，payForbidden Integer
+04:30:36 权益已确认，提交商城正常设置 2176246
+04:30:36 核对服务器当前装扮 2176246
+04:30:36 商城权益字段类型：authret Integer，payForbidden Integer
+04:30:36 账号装扮 气泡 2176246 / 子气泡 0
+04:30:36 服务器已确认账号气泡 2176246；字体保留
+04:30:36 逐消息服务器确认后恢复原发送点击一次
+04:31:00 设置回调 b.f
+04:31:00 已添加 QQ 设置模块入口
+04:31:03 打开模块设置面板
+04:34:29 设置回调 b.f
+04:34:29 已添加 QQ 设置模块入口
+04:34:32 打开模块设置面板
+04:35:04 QQ 内设置已保存；勾选 2449
+04:39:00 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:39:00 逐消息已确认 QQ 活动会话：contexts=2,matchingFrames=1,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=0,staleContacts=0,unreadHistorical=0
+04:39:00 逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false
+04:39:00 逐消息物理点击已延后，等待商城确认
+04:39:00 正在核对商城使用权益 282
+04:39:00 商城权益字段类型：authret Integer，payForbidden Integer
+04:39:00 权益已确认，提交商城正常设置 282
+04:39:00 核对服务器当前装扮 282
+04:39:00 商城权益字段类型：authret Integer，payForbidden Integer
+04:39:00 账号装扮 气泡 282 / 子气泡 0
+04:39:00 服务器已确认账号气泡 282；字体保留
+04:39:00 逐消息服务器确认后恢复原发送点击一次
+04:42:34 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:42:34 逐消息已确认 QQ 活动会话：contexts=2,matchingFrames=1,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=0,staleContacts=0,unreadHistorical=0
+04:42:34 逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false
+04:42:34 逐消息物理点击已延后，等待商城确认
+04:42:34 正在核对商城使用权益 2171791
+04:42:35 商城权益字段类型：authret Integer，payForbidden Integer
+04:42:35 权益已确认，提交商城正常设置 2171791
+04:42:35 核对服务器当前装扮 2171791
+04:42:35 商城权益字段类型：authret Integer，payForbidden Integer
+04:42:35 账号装扮 气泡 2171791 / 子气泡 0
+04:42:35 服务器已确认账号气泡 2171791；字体保留
+04:42:35 逐消息服务器确认后恢复原发送点击一次
+04:42:58 设置回调 b.f
+04:42:58 已添加 QQ 设置模块入口
+04:43:01 打开模块设置面板
+04:44:08 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:44:08 逐消息已确认 QQ 活动会话：contexts=4,matchingFrames=3,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=2,staleContacts=1,unreadHistorical=0
+04:44:08 逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false
+04:44:08 逐消息物理点击已延后，等待商城确认
+04:44:08 正在核对商城使用权益 2116350
+04:44:08 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:44:08 商城权益字段类型：authret Integer，payForbidden Integer
+04:44:08 权益已确认，提交商城正常设置 2116350
+04:44:08 核对服务器当前装扮 2116350
+04:44:09 商城权益字段类型：authret Integer，payForbidden Integer
+04:44:09 账号装扮 气泡 2116350 / 子气泡 0
+04:44:09 服务器已确认账号气泡 2116350；字体保留
+04:44:09 逐消息服务器确认后恢复原发送点击一次
+04:44:32 设置回调 b.f
+04:44:32 已添加 QQ 设置模块入口
+04:44:35 打开模块设置面板
+04:45:49 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:45:49 逐消息已确认 QQ 活动会话：contexts=5,matchingFrames=4,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=3,staleContacts=1,unreadHistorical=0
+04:45:49 逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false
+04:45:49 逐消息物理点击已延后，等待商城确认
+04:45:49 正在核对商城使用权益 2119735
+04:45:49 环境已变化，取消尚未提交的切换
+04:45:49 逐消息延后发送已取消；未自动发送或重试
+04:46:16 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+04:46:16 逐消息已确认 QQ 活动会话：contexts=5,matchingFrames=4,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=3,staleContacts=1,unreadHistorical=0
+04:46:16 逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false
+04:46:16 逐消息物理点击已延后，等待商城确认
+04:46:16 正在核对商城使用权益 2123480
+04:46:16 环境已变化，取消尚未提交的切换
+04:46:16 逐消息延后发送已取消；未自动发送或重试
+04:46:49 已添加 QQ 设置模块入口
+04:46:52 打开模块设置面板
+
+
+“已替换发送参数”不代表服务器已接受，更不代表对方已看到。
+仅统计计数和接口状态；不记录正文、QQ号、群号或令牌。

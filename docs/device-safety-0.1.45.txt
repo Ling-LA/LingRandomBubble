@@ -1,0 +1,33 @@
+PASS legacy sending disabled
+PASS legacy collection disabled
+PASS legacy rows deselected
+PASS server numeric flags accepted
+PASS missing server flag rejected
+PASS unknown server flag rejected
+PASS favorite does not enable sending
+PASS favorite does not select styles
+PASS off switch is retained
+PASS host import cannot enable sending
+PASS host import cannot select styles
+PASS harvest does not select styles
+PASS explicit opt-in enables sending
+PASS library import disables sending
+PASS same UID provider reply
+PASS provider preserves off switch
+PASS same UID cannot consume decoration request
+PASS rotation defaults off
+PASS sub-minute rotation rejected
+PASS single-style rotation rejected
+PASS high frequency saved explicitly
+PASS low frequency saved explicitly
+PASS manual request expires
+PASS manual request consumed once
+PASS account rotation isolation
+PASS account switch cannot enable old path
+PASS select all covers library
+PASS select all cannot enable rotation
+PASS checked IDs feed decoration form
+PASS deselect all clears selection
+PASS 1000-style pool accepted
+PASS clear library stops rotation
+RESULT: 32 Android device safety tests passed. QQ delivery NOT tested.

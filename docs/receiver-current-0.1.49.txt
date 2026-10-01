@@ -1,0 +1,3 @@
+2026-10-02: User replied that the unmodified receiving device is temporarily unavailable.
+0.1.49 A/B receiver styles and reopen persistence remain unverified.
+Earlier 0.1.48 confirmations cannot be claimed as 0.1.49 verification.

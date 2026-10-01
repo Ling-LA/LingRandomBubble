@@ -1,0 +1,1 @@
+PASS final QQ native Settings: exactly one Ling module entry; no independent module app required; entry reopened.

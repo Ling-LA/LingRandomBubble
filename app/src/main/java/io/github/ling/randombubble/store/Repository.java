@@ -19,7 +19,46 @@ public final class Repository {
     private Repository(Context c) {
         prefs = c.getApplicationContext().getSharedPreferences("config", Context.MODE_PRIVATE);
         account=prefs.getString("currentAccount","unknown");
-        selectAllExisting();
+        lastDiagnostics=prefs.getString("lastDiagnostics",lastDiagnostics);
+        heartbeat=prefs.getLong("diagnosticHeartbeat",0L);
+    }
+    /** Separate from imported libraries; never enabled by migration or collection. */
+    public synchronized JSONObject decorationSettings() {
+        try {
+            String raw=prefs.getString("decoration."+account,null);
+            if(raw==null || !new JSONObject(raw).has("generation"))return DecorationCodec.defaults(account);
+            return DecorationCodec.validate(raw,account);
+        } catch(JSONException | IllegalArgumentException | IllegalStateException e) {
+            try {return DecorationCodec.defaults(account);} catch(JSONException ignored) {return new JSONObject();}
+        }
+    }
+    public synchronized void configureDecoration(String raw,int seconds,boolean automatic,boolean requestNow) throws JSONException {
+        configureDecoration(raw,seconds,automatic,requestNow,false);
+    }
+    public synchronized void configureDecoration(String raw,int seconds,boolean automatic,boolean requestNow,boolean perMessage) throws JSONException {
+        JSONObject j=DecorationCodec.create(account,raw,seconds,automatic,requestNow,perMessage);
+        if(!prefs.edit().putString("decoration."+account,j.toString()).commit())throw new IllegalStateException("设置保存失败");
+        setFlag("enabled",false); // The failed message-attribute path stays off.
+    }
+    public synchronized void stopDecoration() throws JSONException {
+        JSONObject j=DecorationCodec.stopped(decorationSettings(),account);
+        if(!prefs.edit().putString("decoration."+account,j.toString()).commit())throw new IllegalStateException("停止轮换保存失败");
+    }
+    /** Explicit QQ panel edits, authenticated by ConfigProvider; generic harvest cannot call this. */
+    public synchronized void acceptHostConfig(String raw) throws JSONException {
+        JSONObject j=JsonCodec.object(raw);JSONArray rows=j.getJSONArray("bubbles");
+        for(int i=0;i<rows.length();i++)JsonCodec.decode(rows.getJSONObject(i));
+        j.put("enabled",false);save(j);
+    }
+    public synchronized void acceptHostDecoration(String raw) throws JSONException {
+        JSONObject j=DecorationCodec.validate(raw,account);j.remove("command");j.remove("expires");
+        if(!prefs.edit().putString("decoration."+account,j.toString()).commit())throw new IllegalStateException("装扮配置保存失败");
+    }
+    public synchronized String takeDecoration() {
+        JSONObject j=decorationSettings();
+        String reply=j.toString(); j.remove("command"); j.remove("expires");
+        if(!prefs.edit().putString("decoration."+account,j.toString()).commit()) throw new IllegalStateException("请求消费失败");
+        return reply;
     }
     public synchronized String accountLabel() {
         if(account==null || "unknown".equals(account) || account.length()<4) return "未识别账号";
@@ -32,25 +71,13 @@ public final class Repository {
         account=uin;
         prefs.edit().putString("currentAccount",uin).commit();
     }
-    /** Bubbles participate in sending unless the user later unchecks one. */
-    private void selectAllExisting() {
-        if(prefs.getBoolean("selectedByDefault",false)) return;
-        try {
-            JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles"); boolean changed=false;
-            for(int i=0;i<a.length();i++) if(!a.getJSONObject(i).optBoolean("selected",false)) {
-                a.getJSONObject(i).put("selected",true); changed=true;
-            }
-            if(changed) save(j);
-        } catch(JSONException ignored) { /* keep the current library */ }
-        prefs.edit().putBoolean("selectedByDefault",true).apply();
-    }
     public static synchronized Repository get(Context c) {
         if (instance == null) instance = new Repository(c);
         return instance;
     }
     private String stateKey() { return "unknown".equals(account)?"state":"state."+account; }
     public synchronized JSONObject snapshot() {
-        try { return JsonCodec.object(prefs.getString(stateKey(), JsonCodec.defaults().toString())); }
+        try { return JsonCodec.migrateSafety(JsonCodec.object(prefs.getString(stateKey(), JsonCodec.defaults().toString()))); }
         catch (JSONException e) { return JsonCodec.defaults(); }
     }
     private void save(JSONObject j) throws JSONException {
@@ -71,6 +98,22 @@ public final class Repository {
         if (JsonCodec.config(j.toString()).selected.isEmpty()) j.put("enabled",false);
         save(j);
     }
+    /** Explicit batch action changes selection only, never rotation settings. */
+    public synchronized void selectAll(boolean value) throws JSONException {
+        JSONObject j=snapshot();JSONArray rows=j.getJSONArray("bubbles");
+        for(int i=0;i<rows.length();i++) rows.getJSONObject(i).put("selected",value);
+        if(!value) j.put("enabled",false);
+        save(j);
+    }
+    public synchronized String selectedDecorationIds() {
+        java.util.LinkedHashSet<Integer> ids=new java.util.LinkedHashSet<>();
+        JSONArray rows=snapshot().optJSONArray("bubbles");
+        if(rows!=null) for(int i=0;i<rows.length();i++) {
+            JSONObject row=rows.optJSONObject(i);
+            if(row!=null && row.optBoolean("selected") && row.optInt("bubbleId")>0) ids.add(row.optInt("bubbleId"));
+        }
+        StringBuilder raw=new StringBuilder();for(int id:ids) {if(raw.length()>0)raw.append(',');raw.append(id);}return raw.toString();
+    }
     public synchronized void rename(String id, String name) throws JSONException {
         if (name == null || name.trim().isEmpty() || name.length()>48) throw new JSONException("名称需为 1～48 字");
         JSONObject j = snapshot(); JSONArray a = j.getJSONArray("bubbles");
@@ -84,17 +127,17 @@ public final class Repository {
         if (JsonCodec.config(j.toString()).selected.isEmpty()) j.put("enabled",false);
         save(j);
     }
-    /** One explicit favorite from the QQ menu. Stores bubble fields only and selects it for sending. */
+    /** Favorites only collect metadata; selecting and enabling sending are separate actions. */
     public synchronized String favorite(String encoded) throws JSONException {
         if(encoded==null || encoded.length()>4096) throw new JSONException("气泡数据无效");
         BubbleSpec b=JsonCodec.decode(new JSONObject(encoded));
         JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles");
         boolean found=false;
         for(int i=0;i<a.length();i++) if(JsonCodec.decode(a.getJSONObject(i)).key().equals(b.key())) {
-            a.getJSONObject(i).put("selected",true); found=true; break;
+            found=true; break;
         }
-        if(!found) a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true));
-        j.put("enabled",true); save(j); return found ? "selected" : "added";
+        if(!found) a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",false));
+        save(j); return found ? "selected" : "added";
     }
     /** Adds bubbles saved by the QQ process without removing ones edited in this app. */
     public synchronized int importHost(String raw) throws JSONException {
@@ -112,11 +155,11 @@ public final class Repository {
             if(known.add(b.key())) {
                 String name=row.optString("name",b.label());
                 if(name.length()>48) name=name.substring(0,48);
-                a.put(JsonCodec.encode(b).put("name",name).put("selected",row.optBoolean("selected",true)));
+                a.put(JsonCodec.encode(b).put("name",name).put("selected",false));
                 added++;
             }
         }
-        if(added>0) { j.put("enabled",true); save(j); }
+        if(added>0) save(j);
         return added;
     }
     /** Host suggestions cannot enable features or select a bubble. */
@@ -131,7 +174,7 @@ public final class Repository {
         for(int i=0;i<incoming.length();i++) {
             BubbleSpec b=JsonCodec.decode(incoming.getJSONObject(i));
             if(known.add(b.key())) {
-                a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",true)); changed=true;
+                a.put(JsonCodec.encode(b).put("name",b.label()).put("selected",false)); changed=true;
             }
         }
         if(changed) save(j);
@@ -158,16 +201,21 @@ public final class Repository {
             if(ids.add(b.key())) {
                 String name=row.optString("name",b.label());
                 if(name.length()>48) name=name.substring(0,48);
-                a.put(JsonCodec.encode(b).put("name",name).put("selected",true)); added++;
+                a.put(JsonCodec.encode(b).put("name",name).put("selected",false)); added++;
             }
         }
         j.put("enabled",false); save(j); return added;
     }
     public synchronized void clearLibrary() throws JSONException {
         JSONObject j=snapshot(); j.put("enabled",false); j.put("collect",false); j.put("bubbles",new JSONArray()); save(j);
+        JSONObject settings=decorationSettings();settings.put("automatic",false).put("perMessage",false).put("generation",java.util.UUID.randomUUID().toString());settings.remove("command");settings.remove("expires");
+        if(!prefs.edit().putString("decoration."+account,settings.toString()).commit()) throw new JSONException("停止轮换保存失败");
     }
     public synchronized void diagnostics(String text) {
-        if(text!=null && text.length()<12000) { lastDiagnostics=text; heartbeat=System.currentTimeMillis(); }
+        if(text!=null && text.length()<12000) {
+            lastDiagnostics=text; heartbeat=System.currentTimeMillis();
+            prefs.edit().putString("lastDiagnostics",text).putLong("diagnosticHeartbeat",heartbeat).apply();
+        }
     }
     public synchronized String diagnostics() {
         long age=heartbeat==0 ? -1 : Math.max(0,(System.currentTimeMillis()-heartbeat)/1000);

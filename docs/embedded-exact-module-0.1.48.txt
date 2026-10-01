@@ -1,0 +1,18 @@
+0.1.48 exact embedded module verification
+Verification date: 2026-10-02 (Asia/Shanghai)
+Module: out/LingRandomBubble-0.1.48-debug.apk
+QQ candidate: device-backup/QQ-with-LingBubble-0.1.48.apk (private; excluded from source package)
+Embedded ZIP entry: assets/lspatch/modules/io.github.ling.randombubble.apk
+Module bytes: 150189
+Embedded module bytes: 150189
+Module SHA-256: 5d90f9179c2535a71052aa805d4d5ba0ecfac23c690d73d7b9edbae21a5a7895
+Embedded module SHA-256: 5d90f9179c2535a71052aa805d4d5ba0ecfac23c690d73d7b9edbae21a5a7895
+QQ candidate SHA-256: 989f94d2e85d1b56031550128c90961c8ddc4526c387ec39fbc6de5fd2beef23
+PASS: embedded module and final module APK are byte-for-byte identical.
+PASS: embedded module ZIP member CRCs validate.
+PASS: exact embedded module DEX defines ConversationMatch and contains version 0.1.48.
+PASS: decoded UiTapGate.binding DEX invokes ConversationMatch.add and ConversationMatch.unique.
+PASS: decoded UiTapGate.valid DEX invokes ConversationMatch.same.
+PASS: decoded UiTapGate.binding DEX contains the equivalent branch literal.
+PASS: compiled UiTapGate Attempt/Binding fields do not retain a wrapper context identity.
+Scope: artifact equality and exact compiled code inspection only. This does not prove installation, hook activation, QQ delivery, or receiver appearance.

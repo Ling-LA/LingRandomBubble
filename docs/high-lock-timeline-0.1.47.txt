@@ -1,0 +1,5 @@
+Lock pause began: 2026-10-02 02:12:10 local time; 60-second host timer enabled; known entitled two-style pool; companion absent
+Unlock began: 2026-10-02 02:13:38 local time
+Repeat lock pause began: 2026-10-02 02:14:29; earlier resume report was not captured and is not counted as validation
+Final lock pause began: 2026-10-02 02:15:54; current runtime report verified before lock
+Final unlock began: 2026-10-02 02:17:20

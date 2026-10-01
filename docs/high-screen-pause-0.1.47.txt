@@ -1,0 +1,8 @@
+Screen pause test: original stay_on_while_plugged_in=0 restored, KEYCODE_SLEEP at 02:18:24.
+At 02:18:24 dumpsys reports Dozing, keyguard showing=false.
+Previous USB keep-awake lock window allowed real cycles and does not prove paused screen state.
+At 02:19:07 and current final pause check: Dozing, keyguard showing=true (system dumpsys); no uiautomator used during this pause.
+Resume began: 2026-10-02 02:19:56
+Final runtime: no SET between screen-sleep start 02:18:24 and last verified Dozing/keyguard snapshot 02:19:43.
+ADB wake/dismiss attempt reached credential screen; QQ only resumed after actual device unlock. First new attempt 02:20:47, confirmed 02:20:48; next confirmed 02:21:48.
+See high-screen-resume-0.1.47.txt and final-runtime-0.1.47.txt.

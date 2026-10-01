@@ -40,7 +40,7 @@ public final class MsgAttrAdapter {
     public HashMap<Object,Object> withBubble(Object rawMap, BubbleSpec spec) throws ReflectiveOperationException {
         return withBubble(rawMap, spec, -1L);
     }
-    /** messageId is the outgoing send id. A newly created attribute must use it so the server keeps the bubble. */
+    /** Use outgoing identity for new attributes; server acceptance still requires receiver testing. */
     public HashMap<Object,Object> withBubble(Object rawMap, BubbleSpec spec, long messageId) throws ReflectiveOperationException {
         if (rawMap != null && !(rawMap instanceof Map)) throw new IllegalArgumentException("Not an attribute map");
         Map<?,?> original = rawMap == null ? new HashMap<>() : (Map<?,?>)rawMap;

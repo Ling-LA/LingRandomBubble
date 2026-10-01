@@ -1,0 +1,7 @@
+NOT RUN: Android isolated configuration suite for 0.1.46.
+The test APK built successfully; installing its target module application failed:
+INSTALL_FAILED_USER_RESTRICTED: Install canceled by user.
+Instrumentation could not run because the target application was absent.
+No checks from this suite are counted as passed for 0.1.46.
+The temporary test APK was removed; the independent module application remains absent.
+Embedded-only QQ tests are separately recorded in embedded-*.txt.

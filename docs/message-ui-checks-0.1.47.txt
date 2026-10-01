@@ -1,0 +1,3 @@
+PASS physical rapid double click: exactly one F test message, composer empty; QQ host, companion absent
+PASS edit-and-revert while held: original synthetic draft retained; G not sent
+PASS background while held: H synthetic draft retained, H not sent after QQ returned

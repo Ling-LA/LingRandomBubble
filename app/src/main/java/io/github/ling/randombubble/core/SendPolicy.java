@@ -27,8 +27,9 @@ public final class SendPolicy {
         if(!ready || pool==null || pool.isEmpty()) return skip(Reason.DISABLED);
         if(args==null || args.length!=5) return skip(Reason.UNSUPPORTED);
         try {
-            boolean reused=originals.contains(args[2]);
+            boolean reused=originals.contains(args[2]) || originals.contains(args[3]);
             if(args[2] instanceof List) for(Object e:(List<?>)args[2]) reused|=originals.contains(e);
+            if(args[3] instanceof java.util.Map) for(Object a:((java.util.Map<?,?>)args[3]).values()) reused|=originals.contains(a);
             if(forwardDepth>0) return skip(Reason.ORIGINAL_OR_REPEAT,"forward");
             String deny=OriginGuard.deniedReason(stack);
             if(deny!=null) return skip(Reason.ORIGINAL_OR_REPEAT,"stack "+deny);
@@ -36,22 +37,22 @@ public final class SendPolicy {
             // QQ NT posts sendMsg off the input thread, so the composer frame is usually absent.
             // The one-time Send-button permit is the authorization; denied stacks still block repeats.
             if(args[1]==null) return skip(Reason.UNSUPPORTED);
-            int type=-1;
-            try { type=Reflect.intValue(Reflect.get(args[1],"chatType")); } catch(Throwable ignored) { /* field name differs; still apply */ }
+            int type;
+            try { type=Reflect.intValue(Reflect.get(args[1],"chatType")); }
+            catch(ReflectiveOperationException | IllegalArgumentException e) { return skip(Reason.UNSUPPORTED); }
             if(type==1 && !privateChats) return skip(Reason.UNSUPPORTED);
             if(type==2 && !groups) return skip(Reason.UNSUPPORTED);
-            if(type!=-1 && type!=1 && type!=2) return skip(Reason.UNSUPPORTED);
+            if(type!=1 && type!=2) return skip(Reason.UNSUPPORTED);
             String text=MsgAttrAdapter.plainText(args[2]);
             if(text==null) return skip(Reason.UNSUPPORTED);
-            // A real new message is authorized by not being a repeat/forward.
-            // The send-button tap is too easy to miss, and missing it left the account bubble unchanged.
-            BubbleSpec b=picker.held(now,BubblePicker.HOLD_MS);
-            if(b==null) b=picker.choose(pool,fixed,avoidRepeat);
+            // Async NT sends may lose the composer stack; only an exact one-use tap
+            // permit authorizes them. A missing deny-list match is not authorization.
+            if(!permit.consume(text,now)) return skip(Reason.NO_PERMIT);
+            BubbleSpec b=picker.choose(pool,fixed,avoidRepeat);
             if(b==null) return skip(Reason.DISABLED);
             long messageId=args[0] instanceof Number ? ((Number)args[0]).longValue() : -1L;
             HashMap<Object,Object> map=adapter.withBubble(args[3],b,messageId);
             picker.commit(b);
-            picker.hold(b,now);
             return new Result(Reason.APPLIED,map,null,b);
         } catch(Throwable e) {
             permit.clear(); return new Result(Reason.ERROR,null,e.getClass().getSimpleName(),null);

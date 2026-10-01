@@ -1,6 +1,7 @@
 package io.github.ling.randombubble.hook;
 
 import android.content.Context;
+import android.util.AtomicFile;
 import io.github.ling.randombubble.core.BubbleSpec;
 import io.github.ling.randombubble.store.Config;
 import io.github.ling.randombubble.store.JsonCodec;
@@ -16,6 +17,7 @@ final class AccountLibrary {
     private final Context context;
     private String account="unknown";
     private String json;
+    private String savedJson;
     private String saveError;
     AccountLibrary(Context context) {
         Context app=null;
@@ -44,6 +46,7 @@ final class AccountLibrary {
         String carried=json;
         save();
         account=next;
+        savedJson=null;
         if(load(account)) return true;
         if("unknown".equals(previous) && carried!=null) {
             json=carried;
@@ -57,40 +60,47 @@ final class AccountLibrary {
     }
     synchronized String json() { return json; }
     synchronized void replaceJson(String value) {
+        if(value!=null && value.equals(json) && value.equals(savedJson)) return;
         json=value;
         save();
     }
     synchronized Config add(BubbleSpec spec,Config current) {
+        return addAll(java.util.Collections.singletonList(spec),current);
+    }
+    /** Parse/index once and atomically save one document for a complete harvest batch. */
+    synchronized Config addAll(java.util.Collection<BubbleSpec> specs,Config current) {
+        if(specs==null || specs.isEmpty()) return current;
         try {
             JSONObject document=json==null?JsonCodec.defaults():new JSONObject(json);
             JSONArray bubbles=document.getJSONArray("bubbles");
-            boolean found=false;
-            for(int i=0;i<bubbles.length();i++) {
-                if(JsonCodec.decode(bubbles.getJSONObject(i)).key().equals(spec.key())) {
-                    bubbles.getJSONObject(i).put("selected",true);
-                    found=true;
-                    break;
-                }
+            java.util.HashSet<String> known=new java.util.HashSet<>();
+            for(int i=0;i<bubbles.length();i++) known.add(JsonCodec.decode(bubbles.getJSONObject(i)).key());
+            boolean changed=false;
+            for(BubbleSpec spec:specs) if(spec!=null && known.add(spec.key())) {
+                bubbles.put(JsonCodec.encode(spec).put("name",spec.label()).put("selected",false));
+                changed=true;
             }
-            if(!found) bubbles.put(JsonCodec.encode(spec).put("name",spec.label()).put("selected",true));
-            document.put("enabled",true);
+            if(!changed) return current;
             if(!document.has("avoidRepeat")) document.put("avoidRepeat",true);
-            json=document.toString();
+            String next=document.toString();
+            Config parsed=JsonCodec.config(next);
+            json=next;
             save();
-            return JsonCodec.config(json);
+            return parsed;
         } catch(Exception e) {
+            saveError=e.getClass().getSimpleName()+"@addAll";
             return current;
         }
     }
     private boolean load(String id) {
         File file=new File(dir(),fileName(id));
-        if(!file.isFile()) return false;
         try {
             byte[] data=read(file);
             if(data.length==0 || data.length>JsonCodec.MAX_JSON_CHARS) return false;
             String text=new String(data,StandardCharsets.UTF_8);
             JsonCodec.config(text);
-            json=text;
+            json=JsonCodec.migrateSafety(new JSONObject(text)).toString();
+            savedJson=text;
             return true;
         } catch(Exception e) { return false; }
     }
@@ -98,28 +108,28 @@ final class AccountLibrary {
     private void save() {
         saveError=null;
         if(json==null) return;
-        File tmp=null;
+        AtomicFile atomic=null;
+        FileOutputStream out=null;
         try {
             File folder=dir();
             if(!folder.isDirectory() && !folder.mkdirs()) { saveError="无法创建目录"; return; }
-            File file=new File(folder,fileName(account));
-            tmp=new File(folder,fileName(account)+".tmp");
-            try(FileOutputStream out=new FileOutputStream(tmp)) {
-                out.write(json.getBytes(StandardCharsets.UTF_8));
-                out.flush();
-                try { if(out.getFD()!=null) out.getFD().sync(); } catch(Throwable ignored) { /* the bytes are already flushed */ }
-            }
-            if(file.exists() && !file.delete()) { saveError="无法替换旧库"; return; }
-            if(!tmp.renameTo(file)) { saveError="无法保存"; return; }
-            tmp=null;
+            atomic=new AtomicFile(new File(folder,fileName(account)));
+            out=atomic.startWrite();
+            out.write(json.getBytes(StandardCharsets.UTF_8));
+            atomic.finishWrite(out);
+            out=null;
+            savedJson=json;
         } catch(Exception e) {
             String where=e.getStackTrace().length==0?"":"@"+e.getStackTrace()[0].getMethodName();
             saveError=e.getClass().getSimpleName()+where;
         }
-        finally { if(tmp!=null) tmp.delete(); }
+        finally {
+            if(atomic!=null && out!=null) try {atomic.failWrite(out);}
+            catch(Throwable ignored) {if(saveError==null)saveError="原子写入回退失败";}
+        }
     }
     private static byte[] read(File file) throws java.io.IOException {
-        try(java.io.FileInputStream in=new java.io.FileInputStream(file); java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()) {
+        try(java.io.FileInputStream in=new AtomicFile(file).openRead(); java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()) {
             byte[] buffer=new byte[4096]; int n;
             while((n=in.read(buffer))>=0) out.write(buffer,0,n);
             return out.toByteArray();

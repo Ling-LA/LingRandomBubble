@@ -1,0 +1,7 @@
+Receiver screenshots supplied by the user during the per-message test on 2026-10-02.
+Observed D: white bubble with girl decoration; E: cyan dinosaur bubble; F: white bubble. D/E/F each visible once.
+The user had identified this receiver as not running the module. Screenshots verify visible differing styles; exit/re-entry action is not explicitly documented.
+Private screenshots are excluded from the source archive.
+Private screenshot SHA256: 1a309d31b5adb98942c997bd37fde6e672694d656594c48fe0107cccef75fc1d
+Private screenshot SHA256: 7fd2d7a29fa5464acd327c3a0e3334a67793d3d495f56037f0b9ec4d4d8beb79
+User explicitly reported that the second screenshot was taken WITHOUT exit/re-entry. Persistence after re-entry remains untested in this release.

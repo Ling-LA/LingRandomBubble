@@ -1,0 +1,4 @@
+PASS final installed QQ versionName=9.3.50; LSPatch integrated module updated in-place.
+PASS independent module and test app absent after Android fixture cleanup.
+PASS USB stay_on_while_plugged_in=0 (original, unchanged this run).
+QQ was not uninstalled and its data was not cleared.

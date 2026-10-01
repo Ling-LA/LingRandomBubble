@@ -1,0 +1,2 @@
+PASS single native QQ Settings module entry after real cold restart and final test.
+PASS opens host-native embedded panel with independent module and test app absent.

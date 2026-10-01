@@ -1,0 +1,7 @@
+PASS original rotation pool restored exactly: 209 styles
+PASS original 60-second high timer restored; per-message off
+PASS native library preserved: 2102 rows / 2102 selected (checked in final panel)
+PASS companion and instrumentation packages absent (same as before tests)
+PASS USB stay-awake setting restored: 0
+Account style remains managed by the original enabled automatic rotation; no fixed-style restoration claimed.
+PASS saved controls re-opened in QQ UI: exact original 209 IDs/60 seconds/per-message off; original 2102/2102 library retained.

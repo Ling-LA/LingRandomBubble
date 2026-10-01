@@ -17,6 +17,7 @@ final class HostRuntime {
     final MsgAttrAdapter adapter;
     final SendPolicy policy;
     final HostBridge bridge;
+    final AccountDecoration decoration;
     final ThreadLocal<Integer> forwarding=new ThreadLocal<Integer>() { @Override protected Integer initialValue() { return 0; } };
     final String qqVersion;
     final boolean versionSupported;
@@ -27,6 +28,9 @@ final class HostRuntime {
     private volatile String lastUnknownFrames="未出现";
     private final AtomicLong arms=new AtomicLong(),applied=new AtomicLong(),skipRepeat=new AtomicLong(),
             skipUnknownSource=new AtomicLong(),skipNoPermit=new AtomicLong(),skipType=new AtomicLong(),skipDisabled=new AtomicLong(),errors=new AtomicLong(),observations=new AtomicLong(),recordsSeen=new AtomicLong();
+    private final AtomicLong messageHolds=new AtomicLong(),messageResumes=new AtomicLong(),messageCancels=new AtomicLong();
+    void messageHeld(){messageHolds.incrementAndGet();}
+    void messageFinished(boolean sent){if(sent)messageResumes.incrementAndGet();else messageCancels.incrementAndGet();}
     HostRuntime(Context c,ClassLoader loader) {
         adapter=new MsgAttrAdapter(loader);
         policy=new SendPolicy(permit,originalObjects,adapter,picker);
@@ -35,10 +39,11 @@ final class HostRuntime {
         catch(Exception e) { v="unknown"; }
         qqVersion=v==null ? "unknown" : v;
         versionSupported=qqVersion.equals("9.3.50") || qqVersion.startsWith("9.3.50.");
+        decoration=new AccountDecoration(c,this);
         bridge=new HostBridge(c,this);
     }
     void arm(String text) {
-        if(!versionSupported || !bridge.config.enabled || !sendInstalled || !forwardInstalled || !recordInstalled) return;
+        if(!ready(bridge.config)) return;
         permit.arm(text,SystemClock.uptimeMillis()); arms.incrementAndGet();
     }
     void observeRecord(Object record) {
@@ -49,6 +54,8 @@ final class HostRuntime {
             // QFun reuses exactly these original objects in both repeater branches.
             originalObjects.add(elements);
             if(elements instanceof List) for(Object e:(List<?>)elements) originalObjects.add(e);
+            originalObjects.add(attrs);
+            if(attrs instanceof Map) for(Object a:((Map<?,?>)attrs).values()) originalObjects.add(a);
             if(bridge.config.collect) {
                 List<BubbleSpec> specs=adapter.extract(attrs);
                 for(BubbleSpec b:specs) { bridge.harvest(b); observations.incrementAndGet(); }
@@ -58,7 +65,7 @@ final class HostRuntime {
     /** No sends/cancels: only returns a new attributes map after the tested policy passes. */
     synchronized HashMap<Object,Object> prepare(Object[] args,StackTraceElement[] stack) {
         Config c=bridge.config;
-        boolean ready=sendInstalled && c.enabled && !c.selected.isEmpty();
+        boolean ready=ready(c);
         SendPolicy.Result r=policy.prepare(args,stack,SystemClock.uptimeMillis(),ready,c.groups,c.privateChats,
                 forwarding.get(),c.fixed,c.avoidRepeat,c.selected);
         switch(r.reason) {
@@ -88,9 +95,14 @@ final class HostRuntime {
         }
         return r.attributes;
     }
+    private boolean ready(Config c) {
+        // Receiver validation failed for this path. AccountDecoration is independent.
+        return false;
+    }
     private BubbleSpec active;
     private volatile java.lang.ref.WeakReference<android.app.Activity> resumed=new java.lang.ref.WeakReference<>(null);
     void resumed(android.app.Activity activity) { resumed=new java.lang.ref.WeakReference<>(activity); }
+    void paused(android.app.Activity activity) {if(resumed.get()==activity)resumed=new java.lang.ref.WeakReference<>(null);}
     android.app.Activity currentActivity() {
         android.app.Activity a=resumed.get();
         return a==null || a.isFinishing() || a.isDestroyed() ? null : a;
@@ -112,17 +124,6 @@ final class HostRuntime {
         int main=spec.bubbleId==null?0:spec.bubbleId;
         return main==equippedBubble;
     }
-    /** One style for the getter calls and sendMsg that belong to the same message. */
-    BubbleSpec currentBubble() {
-        long now=SystemClock.uptimeMillis();
-        BubbleSpec recent=picker.held(now,BubblePicker.HOLD_MS);
-        if(recent!=null) return recent;
-        Config c=bridge.config;
-        if(!c.enabled || c.selected.isEmpty()) return null;
-        active=picker.choose(c.selected,c.fixed,c.avoidRepeat);
-        if(active!=null) { picker.commit(active); picker.hold(active,now); }
-        return active;
-    }
     private static int visuals(List<BubbleSpec> list) {
         java.util.HashSet<String> looks=new java.util.HashSet<>();
         if(list!=null) for(BubbleSpec s:list) if(s!=null) looks.add(BubblePicker.visual(s));
@@ -142,10 +143,14 @@ final class HostRuntime {
         return out.length()==0?"尚无":out.toString();
     }
     String report() {
-        return "Ling 随机气泡 0.1.19-experimental\nQQ："+qqVersion+"\n账号："+bridge.libraryMask()+"\n版本门控："+(versionSupported?"匹配目标":"版本不同，仍尝试发送")
+        return "Ling 随机气泡 "+io.github.ling.randombubble.BuildConfig.VERSION_NAME+"\nQQ："+qqVersion+"\n账号："+bridge.libraryMask()+"\n版本门控："+(versionSupported?"匹配目标":"版本不同，停止替换")
             +"\n发送接口："+sendInstalled+"\n转发回避接口："+forwardInstalled+"\n原消息识别接口："+recordInstalled
             +"\n收藏菜单："+menuInstalled+" 注入次数："+menuInjected+"\nQQ设置入口："+settingInstalled
             +"\n发送按钮观察："+tapInstalled+"\n配置桥接："+bridgeHealthy
+            +"\nQQ 内配置："+bridge.controlsHealthy()+"；来源 "+bridge.controlSource()
+            +"\n轮换计时："+bridge.timerStatus()
+            +"\n逐消息延后 / 恢复 / 取消："+messageHolds.get()+" / "+messageResumes.get()+" / "+messageCancels.get()
+            +"\n账号装扮切换："+decoration.status()
             +"\n\n有效发送点击："+arms.get()+"\n已替换发送参数："+applied.get()
             +"\n复读/转发/原对象跳过："+skipRepeat.get()+"\n未知来源调用栈跳过："+skipUnknownSource.get()+"\n无匹配点击跳过："+skipNoPermit.get()
             +"\n非普通文字/聊天类型跳过："+skipType.get()+"\n开关/适配条件不满足："+skipDisabled.get()

@@ -1,0 +1,58 @@
+PASS permit requires a physical arm
+PASS permit matches exact text once
+PASS permit rejects mismatched text and clears
+PASS permit expires
+PASS permit boundary accepted
+PASS permit rejects backward clock
+PASS permit clear prevents stale use
+PASS blank/null/oversized input never arms
+PASS two concurrent sends cannot consume same permit
+PASS identity set rejects equal-but-different lists
+PASS identity set null safe
+PASS QFun directSend call stack blocked
+PASS QFun send hook is not a repeat
+PASS QFun script send is not a repeat
+PASS normal send with a tap applies when QFun observer is on the stack
+PASS forward stack blocked
+PASS follow/repeater stack blocked
+PASS native composer stack allowed by deny check
+PASS kernel async send with exact tap is applied
+PASS async send without a tap is skipped
+PASS missing stack fails closed
+PASS normal fresh plain text produces replacement
+PASS QFun direct send denied even with matching pending tap
+PASS forward nesting denied even with matching pending tap
+PASS original elements list blocks obfuscated repeater
+PASS reused original attribute map blocks repeat
+PASS copied list with original elements still blocked
+PASS ordinary send without a tap is skipped
+PASS another script changing text consumes and rejects permit
+PASS disabled policy clears pending permit
+PASS unsupported chat type skipped
+PASS mentions skipped
+PASS mixed/photo/voice/reply elements skipped
+PASS missing chat type fails closed and preserves args
+PASS null argument array safe
+PASS empty bubble pool safe
+PASS copy-on-write retains original bubble and attributes
+PASS other map entries preserve identity
+PASS null map uses learned attribute metadata
+PASS new attribute uses outgoing message id
+PASS conflicting VAS key rejects without mutation
+PASS existing bubble keeps its attribute type
+PASS extract contains metadata only
+PASS default/malformed templates ignored
+PASS negative bubble IDs rejected
+PASS nullable fields preserved
+PASS fixed picker picks first selected
+PASS hold reuses one style inside the window
+PASS random picker never immediately repeats with two entries
+PASS one-item random pool valid
+PASS policy never changes message ID/contact/elements/callback
+PASS every new send needs its own tap
+PASS copied map with original attribute blocks repeat
+PASS expired permit cannot change attributes
+PASS two quick sends choose independently
+PASS existing account bubble slot is restyled
+
+RESULT: 56 test groups passed. These are policy/fixture tests, NOT Android builds or QQ device tests.
