@@ -1,0 +1,7 @@
+Starting: Intent { cmp=com.tencent.mobileqq/.activity.SplashActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.tencent.mobileqq/.activity.SplashActivity
+TotalTime: 1965
+WaitTime: 1973
+Complete

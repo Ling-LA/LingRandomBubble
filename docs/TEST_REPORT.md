@@ -1,6 +1,16 @@
 # 当前测试报告入口
 
-当前版本为 **0.1.50 / code 51**。[96组核心](core-tests-0.1.50.txt)、[122项Android](device-safety-0.1.50.txt)通过，含30项生产文字分类与快照回归；[构建和Lint](android-build-0.1.50.txt)为0 errors/30 warnings，手机覆盖安装50成功。完整范围见[50报告](VALIDATION-2026-10-02-0.1.50.md)。
+当前版本为 **0.1.51 / code 52**。[96组核心](core-tests-0.1.51.txt)、[196项Android](device-safety-0.1.51.txt)通过；[构建和Lint](android-build-0.1.51.txt)为0 errors/28 warnings，[QQ覆盖安装](embedded-update-0.1.51.txt)成功。真实QQ普通/引用正向六条各一条，关闭引用的一次等待永久取消、未提交SET且0条/精确草稿保留。单发送进程最终**7/6/1、心跳3374/sync0**，[诊断](reply-final-run-0.1.51.txt)及[UI记录](message-ui-checks-0.1.51.txt)。接收端两款不同、引用卡片保留及重进保持来自用户回复“是”，没有读取接收端截图。范围和限制见[51报告](VALIDATION-2026-10-02-0.1.51.md)。
+
+51原生引用同时核对tag/顶部图标/GetReplyData逻辑数据及等待快照，见[QQ结构](qq-reply-schema-0.1.51.txt)。A引用自己的source，B引用A双击只一条，C引用其他成员指定源并经QQ原生成员选择加入@，引用与@保留；该QQ设置没有自动@，不写自动添加。D/F分别为引用@和关闭引用之后普通文字。第一次[实际COLD](qq-cold-0.1.51.txt)后[初始配置](config-initial-0.1.51.txt)精确读回原219候选/60秒/perMessage=true；[入口0/0/0](current-entry-0.1.51.txt)为发送前快照。引用回切、h.m重绘、小表情加引用、普通无引用@原路径、后台/锁屏和新定时周期等未本轮实测；50或更早结果不补足51范围。
+
+临时测试后的[第二次实际COLD](qq-cold-final-0.1.51.txt)完成[最终精确恢复](config-restored-0.1.51.txt)：原219 IDs/60秒/automatic=false/perMessage=true/collect=false，库2644/勾选2449保持。[最后检查进程](current-final-0.1.51.txt)0/0/0、心跳347/sync0仅配置与原生面板检查，没有新增发送，和之前发送进程7/6/1区分。[设备](device-final-0.1.51.txt)确认独立模块/test应用不存在、USB原值0、QQ未卸载/清数据，最终留下原生面板；当前装扮2173887由原开启逐消息模式管理。90条fatal均为09-30历史，本轮10-02 20:06:49以来无新fatal，不称整个buffer无崩溃或长期稳定。
+
+## 0.1.50 历史摘要
+
+以下保留50当时的结果和限制，不代替51验证。
+
+0.1.50 / code 51：[96组核心](core-tests-0.1.50.txt)、[122项Android](device-safety-0.1.50.txt)通过，含30项生产文字分类与快照回归；[构建和Lint](android-build-0.1.50.txt)为0 errors/30 warnings，手机覆盖安装50成功。完整范围见[50报告](VALIDATION-2026-10-02-0.1.50.md)。
 
 [四条顺序发送](current-sequence-0.1.50.txt)涵盖QQ小表情、之后的纯文字和双击；[编辑还原与HOME取消](current-guards-0.1.50.txt)均未自动发送、保留精确草稿。冷启动后的[两款接收端测试](current-receiver-sends-0.1.50.txt)各发送一次；两个发送进程合计延后/恢复/取消 **8/6/2**，六条正向各可见一条、两次取消各0条。用户文字确认[“两款不同，重进后仍保留”](receiver-current-0.1.50.txt)；没有读取接收端截图，不能称为截图核验。
 
@@ -10,7 +20,7 @@
 
 ## 0.1.49 历史摘要
 
-以下保留49当时的结果和限制，不代替50验证。
+以下保留49当时的结果和限制，不代替51验证。
 
 0.1.49 / code 50：[96组核心](core-tests-0.1.49.txt)、[92项Android](device-safety-0.1.49.txt)通过，构建和Lint 0 errors/27 warnings通过；覆盖安装49成功。A～E及真实冷启动后原219池的H，六条各发送一次；F修改还原/G聊天离开再返回取消保留精确草稿。原最新配置与环境已恢复，本轮接收端暂无法配合，样式及重进未验证。完整范围见[49报告](VALIDATION-2026-10-02-0.1.49.md)。
 

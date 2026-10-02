@@ -77,8 +77,8 @@ public final class MainActivity extends Activity {
         });
         scroll.requestApplyInsets();
         text("Ling 随机气泡",28,true);
-        text(io.github.ling.randombubble.BuildConfig.VERSION_NAME+" · 实机验证版\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
-        text("已通过 QQ 9.3.50 双端实测：账号装扮切换可被未安装模块的接收端看到。请在诊断中确认服务器结果；编号仍需具有使用权益。",14,false);
+        text(io.github.ling.randombubble.BuildConfig.VERSION_NAME+" · 配置面板\n目标：QQ 9.3.50 / 与 QFun 1.3.4 并行\n当前账号："+repo.accountLabel(),14,false);
+        text("账号装扮切换通过 QQ 正常商城接口处理。请在诊断中确认服务器结果；编号仍需具有使用权益。",14,false);
         section("账号装扮切换");
         text("计时和逐消息默认关闭，可独立开启。低频建议 1800 秒，高频建议 60 秒，可自行配置 60 至 86400 秒。逐消息会等待商城确认后发送，增加账号设置请求。",14,false);
         JSONObject decoration=repo.decorationSettings();
@@ -119,7 +119,7 @@ public final class MainActivity extends Activity {
                 .setMessage("将关闭发送及采集开关。不会删除 QQ 的消息，也不会修改 QFun 配置。")
                 .setNegativeButton("取消",null).setPositiveButton("清空",(d,w)->execute(()->{repo.clearLibrary();render();})).show());
         section("运行保护");
-        text("只在 QQ 前台且屏幕解锁时处理。请求失败后停止；逐消息失败保留输入，文本、表情或会话变化取消发送。支持点击发送按钮的普通文字及 QQ 自带小表情；图片、表情图片、@、引用、附件、Enter 或脚本消息沿用 QQ 原发送。勾选和全选不会开启功能。",13,false);
+        text("只在 QQ 前台且屏幕解锁时处理。请求失败后停止；逐消息失败保留输入，等待期间替换或取消引用、修改文本或表情、会话或环境变化均取消本次发送。支持点击发送按钮的普通文字、QQ 自带小表情及引用回复文字，引用内 QQ 原生 @ 随引用处理；图片消息、表情包图、无引用 @、附件、Enter 或脚本消息沿用 QQ 原发送。勾选和全选不会开启功能。",13,false);
         scroll.post(()->scroll.scrollTo(0,y));
     }
     private void decorationDialog() {
@@ -129,7 +129,7 @@ public final class MainActivity extends Activity {
         String selected=repo.selectedDecorationIds();
         JSONArray existing=settings.optJSONArray("ids"); if(!selected.isEmpty()) ids.setText(selected); else if(existing!=null) try { ids.setText(existing.join(",")); } catch(Exception ignored) {}
         form.addView(ids);
-        CheckBox perMessage=new CheckBox(this); perMessage.setText("逐消息切换（文字 / QQ 表情）"); perMessage.setChecked(settings.optBoolean("perMessage",false)); form.addView(perMessage);
+        CheckBox perMessage=new CheckBox(this); perMessage.setText("逐消息切换（文字 / 表情 / 引用）"); perMessage.setChecked(settings.optBoolean("perMessage",false)); form.addView(perMessage);
         android.widget.Spinner mode=new android.widget.Spinner(this);
         mode.setAdapter(new android.widget.ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"手动切换","低频自动轮换","高频自动轮换"}));
         int seconds=settings.optInt("seconds",1800); mode.setSelection(settings.optBoolean("automatic")?(seconds<1800?2:1):0); form.addView(mode);
@@ -142,7 +142,7 @@ public final class MainActivity extends Activity {
                 if(position==1) interval.setText("1800"); else if(position==2) interval.setText("60");
             }
         });
-        TextView hint=new TextView(this); hint.setText("手动切换到第一个编号；自动模式随机轮换。逐消息可单独开启（计时选手动），至少需要两款。点击发送后等待商城确认新装扮，再继续本次发送；失败保留输入，文本、表情或会话变化取消发送。支持普通文字及 QQ 自带小表情；图片、表情图片、@、引用、附件、Enter 或脚本消息沿用 QQ 原发送。设置修改整个账号，增加账号设置请求；请确认气泡使用权益。"); form.addView(hint);
+        TextView hint=new TextView(this); hint.setText("手动切换到第一个编号；自动模式随机轮换。逐消息可单独开启（计时选手动），至少需要两款。点击发送后等待商城确认新装扮，再继续本次发送。支持普通文字、QQ 自带小表情及引用回复文字，引用内 QQ 原生 @ 随引用处理；图片消息、表情包图、无引用 @、附件、Enter 或脚本消息沿用 QQ 原发送。失败保留输入；等待期间替换或取消引用、修改文本或表情、会话或环境变化均取消本次发送。设置修改整个账号，增加账号设置请求；请确认气泡使用权益。"); form.addView(hint);
         ScrollView formScroll=new ScrollView(this); formScroll.addView(form);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle("账号装扮配置").setView(formScroll).setNegativeButton("取消",null).setPositiveButton("保存并执行",null).create();
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> execute(() -> {

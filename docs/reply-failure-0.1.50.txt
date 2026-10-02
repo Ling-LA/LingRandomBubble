@@ -1,0 +1,116 @@
+Ling 随机气泡 0.1.50
+QQ：9.3.50
+账号：已遮盖
+版本门控：匹配目标
+发送接口：true
+转发回避接口：true
+原消息识别接口：true
+收藏菜单：true 注入次数：6
+QQ设置入口：true
+发送按钮观察：true
+配置桥接：false
+QQ 内配置：true；来源 QQ 本机
+轮换计时：心跳 31172；同步异常 0；最近心跳 0 秒前
+逐消息延后 / 恢复 / 取消：8 / 8 / 0
+账号装扮切换：逐消息已开启；等待文字或 QQ 小表情发送点击
+
+有效发送点击：0
+已替换发送参数：0
+复读/转发/原对象跳过：6
+未知来源调用栈跳过：0
+无匹配点击跳过：0
+非普通文字/聊天类型跳过：0
+开关/适配条件不满足：12
+原消息访问次数：2049829
+属性处理异常：0
+读取到气泡模板次数：0
+最近诊断：消息菜单：无法创建收藏气泡
+
+最近未知来源类/方法（无参数）：
+未出现
+
+运行日志（不含正文）：
+15:41:48 商城权益字段类型：authret Integer，payForbidden Integer
+15:41:48 跳过未确认权益的气泡 2117762
+15:41:48 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+15:41:49 正在核对商城使用权益 2126841
+15:41:49 商城权益字段类型：authret Integer，payForbidden Integer
+15:41:49 权益已确认，提交商城正常设置 2126841
+15:41:49 核对服务器当前装扮 2126841
+15:41:49 商城权益字段类型：authret Integer，payForbidden Integer
+15:41:49 账号装扮 气泡 2126841 / 子气泡 0
+15:41:49 服务器已确认账号气泡 2126841；字体保留
+15:41:49 逐消息服务器确认后恢复原发送点击一次
+15:42:01 设置回调 b.f
+15:42:01 已添加 QQ 设置模块入口
+15:42:03 打开模块设置面板
+15:42:26 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+15:42:26 逐消息已确认 QQ 活动会话：contexts=12,matchingFrames=5,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=4,staleContacts=1,unreadHistorical=0
+15:42:26 逐消息物理点击已延后，等待商城确认
+15:42:26 正在核对商城使用权益 2053077
+15:42:26 商城权益字段类型：authret Integer，payForbidden Integer
+15:42:26 权益已确认，提交商城正常设置 2053077
+15:42:26 核对服务器当前装扮 2053077
+15:42:26 商城权益字段类型：authret Integer，payForbidden Integer
+15:42:26 账号装扮 气泡 2053077 / 子气泡 0
+15:42:26 服务器已确认账号气泡 2053077；字体保留
+15:42:26 逐消息服务器确认后恢复原发送点击一次
+15:43:12 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+15:43:12 逐消息跳过：本次输入不是已适配的文字或 QQ 小表情；spanClasses=android.text.DynamicLayout$ChangeWatcher[0:4:8388626],android.widget.TextView$ChangeWatcher[0:4:6553618],android.text.method.TextKeyListener[0:4:18],android.widget.Editor$SpanController[0:4:18],android.text.Selection$START[4:4:546],android.text.Selection$END[4:4:34];movement=com.tencent.mobileqq.aio.reply.a;drawables=0100/0100;replyTag=present;rich=none；本次沿用 QQ 原发送
+16:15:53 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+16:15:53 逐消息当前会话匹配失败：contexts=6,matchingFrames=1,reason=当前会话类型未适配
+16:15:53 逐消息跳过：未匹配唯一会话上下文；本次沿用 QQ 原发送
+19:07:21 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+19:07:21 逐消息已确认 QQ 活动会话：contexts=3,matchingFrames=2,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=1,staleContacts=1,unreadHistorical=0
+19:07:21 逐消息物理点击已延后，等待商城确认
+19:07:21 正在核对商城使用权益 2146339
+19:07:22 商城权益字段类型：authret Integer，payForbidden Integer
+19:07:22 权益已确认，提交商城正常设置 2146339
+19:07:22 核对服务器当前装扮 2146339
+19:07:22 商城权益字段类型：authret Integer，payForbidden Integer
+19:07:22 账号装扮 气泡 2146339 / 子气泡 0
+19:07:22 服务器已确认账号气泡 2146339；字体保留
+19:07:22 逐消息服务器确认后恢复原发送点击一次
+19:07:30 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+19:07:30 逐消息已确认 QQ 活动会话：contexts=3,matchingFrames=2,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=1,staleContacts=1,unreadHistorical=0
+19:07:30 逐消息物理点击已延后，等待商城确认
+19:07:30 正在核对商城使用权益 2171729
+19:07:31 商城权益字段类型：authret Integer，payForbidden Integer
+19:07:31 权益已确认，提交商城正常设置 2171729
+19:07:31 核对服务器当前装扮 2171729
+19:07:31 商城权益字段类型：authret Integer，payForbidden Integer
+19:07:31 账号装扮 气泡 2171729 / 子气泡 0
+19:07:31 服务器已确认账号气泡 2171729；字体保留
+19:07:31 逐消息服务器确认后恢复原发送点击一次
+19:07:41 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+19:07:41 逐消息已确认 QQ 活动会话：contexts=3,matchingFrames=2,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=1,staleContacts=1,unreadHistorical=0
+19:07:41 逐消息物理点击已延后，等待商城确认
+19:07:41 正在核对商城使用权益 2151507
+19:07:41 商城权益字段类型：authret Integer，payForbidden Integer
+19:07:41 权益已确认，提交商城正常设置 2151507
+19:07:41 核对服务器当前装扮 2151507
+19:07:41 商城权益字段类型：authret Integer，payForbidden Integer
+19:07:41 账号装扮 气泡 2151507 / 子气泡 0
+19:07:41 服务器已确认账号气泡 2151507；字体保留
+19:07:41 逐消息服务器确认后恢复原发送点击一次
+19:08:33 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+19:08:33 逐消息跳过：本次输入不是已适配的文字或 QQ 小表情；spanClasses=android.text.DynamicLayout$ChangeWatcher[0:5:8388626],android.widget.TextView$ChangeWatcher[0:5:6553618],android.text.method.TextKeyListener[0:5:18],android.widget.Editor$SpanController[0:5:18],android.text.Selection$START[5:5:546],android.text.Selection$END[5:5:34];movement=com.tencent.mobileqq.aio.reply.a;drawables=0100/0100;replyTag=present;rich=none；本次沿用 QQ 原发送
+19:08:41 发送点击匹配输入框 com.tencent.mobileqq.aio.input.edit.AIOEditText
+19:08:41 逐消息已确认 QQ 活动会话：contexts=5,matchingFrames=1,source=currentChatPie,chainSame=true,activeRootContainsButton=true,historicalWrappers=0,staleContacts=0,unreadHistorical=0
+19:08:41 逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false
+19:08:41 逐消息物理点击已延后，等待商城确认
+19:08:41 正在核对商城使用权益 2172181
+19:08:41 商城权益字段类型：authret Integer，payForbidden Integer
+19:08:41 权益已确认，提交商城正常设置 2172181
+19:08:42 核对服务器当前装扮 2172181
+19:08:42 商城权益字段类型：authret Integer，payForbidden Integer
+19:08:42 账号装扮 气泡 2172181 / 子气泡 0
+19:08:42 服务器已确认账号气泡 2172181；字体保留
+19:08:42 逐消息服务器确认后恢复原发送点击一次
+19:44:44 设置回调 b.f
+19:44:44 已添加 QQ 设置模块入口
+19:44:48 打开模块设置面板
+
+
+“已替换发送参数”不代表服务器已接受，更不代表对方已看到。
+仅统计计数和接口状态；不记录正文、QQ号、群号或令牌。

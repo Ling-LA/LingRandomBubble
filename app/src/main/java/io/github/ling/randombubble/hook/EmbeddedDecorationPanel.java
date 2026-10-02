@@ -39,7 +39,7 @@ final class EmbeddedDecorationPanel {
             if(selected.isEmpty()) Toast.makeText(activity,"请先在气泡库勾选有权使用的气泡",Toast.LENGTH_LONG).show();
             else ids.setText(selected);
         }),SettingsPanel.gap(activity,8));
-        CheckBox perMessage=new CheckBox(activity); perMessage.setText("逐消息切换（文字 / QQ 表情）"); perMessage.setTextSize(15); perMessage.setTextColor(SettingsPanel.PAPER);
+        CheckBox perMessage=new CheckBox(activity); perMessage.setText("逐消息切换（文字 / 表情 / 引用）"); perMessage.setTextSize(15); perMessage.setTextColor(SettingsPanel.PAPER);
         perMessage.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{SettingsPanel.TEAL,SettingsPanel.MUTED}));
         perMessage.setChecked(settings.optBoolean("perMessage",false)); form.addView(perMessage,SettingsPanel.gap(activity,12));
         form.addView(SettingsPanel.label(activity,"可单独开启：计时模式选手动即可。需要至少两款气泡。点击发送后会等待商城确认新装扮，再继续这一次发送。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,6));
@@ -61,7 +61,7 @@ final class EmbeddedDecorationPanel {
         }
         update.run(); SettingsPanel.heading(form,"间隔秒数"); form.addView(interval);
         form.addView(SettingsPanel.label(activity,"低频预设 1800 秒，高频预设 60 秒，可自行修改为 60～86400 秒。手动切换到第一个编号；自动随机轮换不同款式，至少需要两款。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
-        form.addView(SettingsPanel.label(activity,"逐消息失败保留输入；等待期间文本、表情或会话变化会取消发送。支持点击发送按钮的普通文字及 QQ 自带小表情；图片、表情图片、@、引用、附件、Enter 或脚本消息沿用 QQ 原发送。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
+        form.addView(SettingsPanel.label(activity,"支持点击发送按钮的普通文字、QQ 自带小表情及引用回复文字，引用内 QQ 原生 @ 随引用处理。图片消息、表情包图、无引用 @、附件、Enter 或脚本消息沿用 QQ 原发送。失败保留输入；等待期间替换或取消引用、修改文本或表情、会话或环境变化均取消本次发送。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
         form.addView(SettingsPanel.label(activity,"仅在 QQ 前台且屏幕解锁时执行。全选或收录不代表拥有使用权益。高频及逐消息会增加账号设置请求，建议优先使用低频。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
         TextView failure=SettingsPanel.label(activity,"",13,0xFFFFB9AD,false); failure.setVisibility(View.GONE); form.addView(failure,SettingsPanel.gap(activity,8));
         form.addView(SettingsPanel.pill(activity,"保存并执行",true,() -> {

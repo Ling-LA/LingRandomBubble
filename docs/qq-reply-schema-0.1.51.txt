@@ -1,0 +1,113 @@
+QQ 9.3.50 native reply structure check (2026-10-02)
+
+Source: the original QQ APK retained inside the private installed LSPatch package;
+classes4.dex, classes5.dex, classes6.dex and classes9.dex were inspected read-only.
+This record contains class shapes, field types and method signatures only. No QQ
+APK, DEX, decompiled implementation, account identifiers, quoted text, nicknames,
+actual message identifiers or authentication information is distributed here.
+
+Logical reply data and read-only query
+
+Exact data class: com.tencent.mobileqq.aio.input.l (classes6.dex).
+Its four instance payload fields are private final:
+  a: java.lang.String -- nickname
+  b: java.lang.String -- replyText
+  c: long -- messageSequence
+  d: long -- messageId
+Constructor: public l(String, String, long, long).
+The inspected ordinary constructor stores those arguments in that order. Its
+String parameter checks and structural toString labels establish the names above.
+Ordinary getters: c() returns a; d() returns b; b() returns c; a() returns d.
+These types do not prove positive-only identifier semantics; snapshots preserve
+the exact long values and do not reject zero or signed values by assumption.
+
+Query intent: com.tencent.mobileqq.aio.input.reply.InputReplyMsgIntent$GetReplyData.
+Its public static final d field is the singleton of that exact intent class.
+Current AIO context e() supplies the MVI route; route k(MsgIntent) returns
+com.tencent.mvi.base.route.k.
+The exact recognized reply result is com.tencent.mobileqq.aio.input.reply.a$a;
+its public final a() returns com.tencent.mobileqq.aio.input.l, including null for
+a known empty reply. In the inspected ordinary query delegate, GetReplyData
+returns a non-null a$a wrapping the current data field even when that field is
+null. A null or unrelated route result does not establish an empty reply.
+The inspected GetReplyData branch reads current state and constructs its result;
+it does not clear or replace the reply. Runtime routing and hotpatch behavior
+are not established by a static class-shape record.
+
+Logical state owner and mutations
+
+Exact delegate: com.tencent.mobileqq.aio.input.reply.i (classes6.dex).
+  private f: com.tencent.aio.api.runtime.a -- current AIO context
+  private h: com.tencent.mobileqq.aio.input.l -- current logical reply
+  public final f(com.tencent.mvi.base.route.MsgIntent): void -- intent handler
+  private final j(String, CharSequence, long, long): void -- installs logical data
+  private final d(): void -- clears logical data
+  public final i(MsgIntent): com.tencent.mvi.base.route.k -- query handler
+The ordinary j path constructs a new l, stores it in h and publishes reply UI
+state; the ordinary d path clears h and publishes clear-reply UI state. These
+mutations are observation points, not APIs for the module to invoke or replace.
+An identity/fingerprint comparison alone cannot remember a reply changed away
+and back; pending-send cancellation also requires observed mutation events.
+
+Native visual tag, preview and movement
+
+Exact reply tag class: com.tencent.mobileqq.aio.reply.d (classes6.dex).
+It extends android.text.style.DynamicDrawableSpan. Relevant public fields:
+  e: android.graphics.drawable.Drawable -- native drawable cache
+  h: java.lang.CharSequence -- reply preview metadata
+  f: android.widget.TextView -- an internally created preview TextView
+Tag f is not the composer EditText. The inspected constructor does not accept
+an editor; its preview builder constructs TextView objects and stores one in f.
+Tag rendering/cache methods are not suitable for read-only classification.
+
+Exact native movement class: com.tencent.mobileqq.aio.reply.a (classes6.dex).
+The UI delegate uses its getInstance() when installing a reply. Movement alone
+does not establish a currently active reply, because the clear path can leave
+the movement installed after the tag and drawable have been cleared.
+
+Exact UI delegate: com.tencent.mobileqq.aio.input.reply.h (classes5.dex).
+  private f: android.widget.EditText -- actual composer editor
+  private final m(com.tencent.mobileqq.aio.reply.d,
+                  com.tencent.mobileqq.aio.reply.d$a): void
+  private final n(): void
+The ordinary m path installs the reply tag under the QQ id/gja resource, the
+native top drawable and reply movement on its f editor. The ordinary n path
+clears tag/drawables and posts cursor work; it does not restore movement there.
+Classification must query logical data and read existing visual state rather
+than invoke m/n, render a drawable or reconstruct the quoted content.
+
+Mentions within an already confirmed native reply
+
+Exact mention span: com.tencent.qqnt.aio.at.a (classes9.dex).
+Direct superclass: com.tencent.qqnt.aio.at.c (classes4.dex), whose superclass is
+android.text.style.DynamicDrawableSpan. Exact a itself has no instance payload
+fields. The confirmed minimal stable String payload in its superclass is:
+  d: memberUid
+  e: memberUin
+  s: supplied nickname
+  r: second supplied nickname
+The native InsertAtMemberSpan constructor labels are uid, uin, nickName; its
+VB-state constructor labels are memberUid, memberUin, nickName. The inspected
+ordinary VB span-creation path passes the same nickname as both nickname inputs.
+Superclass getters e()/h()/f()/g() read d/e/s/r respectively. These getter paths
+have QQ hotpatch dispatch, so the module reads the confirmed fields directly.
+
+The mention snapshot uses exact a/direct-parent c, span identity, non-composing
+positive covering range, flags, and a private length-delimited UTF-16 SHA-256
+of d/e/r/s. It does not log or persist UID, UIN or nickname values. It excludes
+drawable and measurement caches; classification never calls getDrawable, draw
+or getSize. Field/schema uncertainty is rejected. Zero-length mention residues,
+mention subclasses and generic replacement/image spans are not authorized.
+
+The mention class does not prove a reply exists: only the caller's confirmed
+active logical and visual reply permits this exact mention class. Ordinary @
+input remains on QQ's original send path. Native reply text, tags, objects and
+spans remain owned by QQ and are neither copied into a new message nor edited.
+
+Evidence boundary
+
+Static structure and isolated Android fixtures do not prove real QQ routing,
+mutation-hook registration, reply switch-away-and-back cancellation, native
+delivery, receiver-side appearance or support on another QQ version. Those
+require separately recorded runtime/device evidence. This record makes no
+claim that all reply/render variants or future hotpatch paths are established.

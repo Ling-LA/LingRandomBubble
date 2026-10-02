@@ -1,0 +1,6 @@
+PASS signing certificate matches installed QQ
+PASS all 40318 other ZIP payloads unchanged (including manifest, original QQ, loader and other modules)
+PASS only target embedded module replaced
+[Private QQ APK excluded]
+PASS freshly pulled source and candidate signatures verified equal.
+PASS adb install -r: Success; QQ retained, no uninstall or data clear.

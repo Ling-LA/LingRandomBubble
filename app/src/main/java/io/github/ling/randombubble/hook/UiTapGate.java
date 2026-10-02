@@ -50,6 +50,7 @@ final class UiTapGate {
     private volatile boolean activeContextHookReady;
     private boolean activeContextHookAttempted;
     private View replaying;
+    private static final Object UNKNOWN_REPLY=new Object();
     UiTapGate(HostRuntime runtime) { this.runtime=runtime; }
     void sendViewEvent(View view,MotionEvent event) {
         if(!qqId(view,"send_btn") || !(view instanceof TextView) || !sendLabel(((TextView)view).getText())) return;
@@ -130,13 +131,42 @@ final class UiTapGate {
             XposedHelpers.findAndHookMethod(fragmentClass,"onHiddenChanged",boolean.class,new XC_MethodHook() {
                 @Override protected void beforeHookedMethod(MethodHookParam param) {if(Boolean.TRUE.equals(param.args[0]))cancelForFragment(param.thisObject);}
             });
+            // QQ's actual logical reply writers cover a change-and-revert between
+            // polls. Observing the current value alone cannot invalidate that click.
+            Class<?> replyHandler=XposedHelpers.findClass("com.tencent.mobileqq.aio.input.reply.i",loader);
+            XC_MethodHook replyChanged=new XC_MethodHook() {
+                @Override protected void beforeHookedMethod(MethodHookParam param) {cancelForReplyContext(param.thisObject);}
+            };
+            XposedHelpers.findAndHookMethod(replyHandler,"d",replyChanged);
+            XposedHelpers.findAndHookMethod(replyHandler,"j",String.class,CharSequence.class,long.class,long.class,replyChanged);
+            Class<?> replyUi=XposedHelpers.findClass("com.tencent.mobileqq.aio.input.reply.h",loader);
+            XC_MethodHook replyUiChanged=new XC_MethodHook() {
+                @Override protected void beforeHookedMethod(MethodHookParam param) {cancelForReplyEditor(param.thisObject);}
+            };
+            XposedHelpers.findAndHookMethod(replyUi,"n",replyUiChanged);
+            XposedHelpers.findAndHookMethod(replyUi,"m",XposedHelpers.findClass("com.tencent.mobileqq.aio.reply.d",loader),
+                XposedHelpers.findClass("com.tencent.mobileqq.aio.reply.d$a",loader),replyUiChanged);
             activeContextHookReady=true;
-            runtime.log("逐消息 QQ 当前会话指针及生命周期观察已就绪");
+            runtime.log("逐消息 QQ 当前会话、生命周期及引用变更观察已就绪");
         }catch(Throwable e) {runtime.log("逐消息当前会话观察未就绪 "+e.getClass().getSimpleName()+"；保留 QQ 原发送");}
     }
     private void cancelForFragment(Object fragment) {
         Attempt attempt=pending;
         if(attempt!=null && fragment!=null && attempt.fragment.get()==fragment && !attempt.finished) {attempt.revision++;attempt.cancelled=true;}
+    }
+    private void cancelForReplyContext(Object handler) {
+        Attempt attempt=pending;if(attempt==null || attempt.finished)return;
+        try {if(XposedHelpers.getObjectField(handler,"f")!=attempt.context.get())return;}
+        catch(Throwable unknown) { /* Unknown writer ownership cancels conservatively. */ }
+        if(!attempt.cancelled)runtime.log("逐消息逻辑引用变更，永久取消本次等待");
+        attempt.revision++;attempt.cancelled=true;
+    }
+    private void cancelForReplyEditor(Object ui) {
+        Attempt attempt=pending;if(attempt==null || attempt.finished)return;
+        try {if(XposedHelpers.getObjectField(ui,"f")!=attempt.editor.get())return;}
+        catch(Throwable unknown) { /* Never restore through an unconfirmed UI writer. */ }
+        if(!attempt.cancelled)runtime.log("逐消息引用预览变更，永久取消本次等待");
+        attempt.revision++;attempt.cancelled=true;
     }
     /** True consumes this original UI click. Only this exact physical gesture may be restored. */
     boolean deferClick(View button) {
@@ -152,20 +182,22 @@ final class UiTapGate {
             if(!activeContextHookReady)return ordinary("当前会话切换观察未就绪");
             View root=activity.getWindow().getDecorView();EditText editor=uniqueComposer(root);
             View composer=editor==null?null:composerContainer(button,editor);
-            if(editor==null || composer==null || !plainEditor(editor) || richDraft(composer))return ordinary("本次输入不是已适配的文字或 QQ 小表情；"+inputDiagnostic(editor,composer));
+            if(editor==null || composer==null || richDraft(composer))return ordinary("本次输入容器未适配；"+inputDiagnostic(editor,composer));
             Binding binding=binding(button,activity,true);
             if(binding==null)return ordinary("未匹配唯一会话上下文");
-            int reply=replyState(binding);
-            if(reply!=0)return ordinary(reply==1?"当前仍有引用回复":"当前逻辑回复状态未能确认");
+            ReplyStateGate.Snapshot reply=ReplyStateGate.snapshot(editor,logicalReply(binding));
+            if(reply==null)return ordinary("引用或普通输入状态未能确认；"+inputDiagnostic(editor,composer));
+            if(ComposerTextGate.snapshot(editor.getText(),reply.active())==null) {reply.clear();return ordinary("本次文字样式未适配；"+inputDiagnostic(editor,composer));}
             Object movement=editor.getMovementMethod();
-            if(movement!=null && movement.getClass().getName().startsWith("com.tencent.mobileqq.aio.reply."))
+            if(!reply.active() && movement!=null && movement.getClass().getName().startsWith("com.tencent.mobileqq.aio.reply."))
                 runtime.log("逐消息已核对取消回复残留：replyTag=false,drawables=false,replyData=false");
             String owner=AccountRef.current(activity);JSONObject config=runtime.bridge.controlSettings();
-            if("unknown".equals(owner) || !owner.equals(config.optString("account")) || !config.optBoolean("perMessage") || config.optString("generation").isEmpty())return ordinary("账号或配置未就绪");
-            Object listener=listener(button);if(listener==null)return ordinary("发送监听器不可确认");
-            Attempt attempt=new Attempt(activity,button,editor,root,composer,binding,listener,owner,config.optString("generation"));
-            try {attempt.watch();} catch(Throwable e) {attempt.finished=true;attempt.unwatch();return ordinary("无法观察输入变更");}
-            pending=attempt;runtime.messageHeld();runtime.log("逐消息物理点击已延后，等待商城确认");
+            if("unknown".equals(owner) || !owner.equals(config.optString("account")) || !config.optBoolean("perMessage") || config.optString("generation").isEmpty()) {reply.clear();return ordinary("账号或配置未就绪");}
+            Object listener=listener(button);if(listener==null) {reply.clear();return ordinary("发送监听器不可确认");}
+            if(!reply.matches(editor,logicalReply(binding))) {reply.clear();return ordinary("引用状态在观察前已变化");}
+            Attempt attempt=new Attempt(activity,button,editor,root,composer,binding,listener,owner,config.optString("generation"),reply);
+            try {attempt.watch();} catch(Throwable e) {attempt.finished=true;attempt.unwatch();reply.clear();attempt.spans.clear();return ordinary("无法观察输入变更");}
+            pending=attempt;runtime.messageHeld();runtime.log(reply.active()?"逐消息引用点击已延后，等待商城确认":"逐消息物理点击已延后，等待商城确认");
             try {runtime.decoration.beforeMessage(config,owner,() -> valid(attempt),success -> finish(attempt,success));}
             catch(Throwable e) {finish(attempt,false);}
             return true;
@@ -181,12 +213,12 @@ final class UiTapGate {
             if(activity.getWindow().getDecorView()!=root || button.getRootView()!=root || !button.isAttachedToWindow() || button.getWindowToken()!=attempt.window ||
                 !button.hasWindowFocus() || !button.isShown() || !button.isEnabled() || !button.isClickable() || listener(button)!=attempt.listener.get())return false;
             View composer=composerContainer(button,editor);
-            if(uniqueComposer(root)!=editor || composer==null || composer!=attempt.composer.get() || editor.getText()!=attempt.editable.get() || !plainEditor(editor) || richDraft(composer) || !attempt.spans.matches(editor.getText()) || !MessageDigest.isEqual(attempt.textHash,hash(editor.getText())))return false;
+            if(uniqueComposer(root)!=editor || composer==null || composer!=attempt.composer.get() || editor.getText()!=attempt.editable.get() || richDraft(composer) || !attempt.spans.matches(editor.getText()) || !MessageDigest.isEqual(attempt.textHash,hash(editor.getText())))return false;
             if(!attempt.owner.equals(AccountRef.current(activity)))return false;
             JSONObject config=runtime.bridge.controlSettings();
             if(!config.optBoolean("perMessage") || !attempt.owner.equals(config.optString("account")) || !attempt.generation.equals(config.optString("generation")))return false;
             Binding current=binding(button,activity);
-            return activeContextHookReady && current!=null && replyState(current)==0 && current.manager==attempt.manager.get() && current.pieRoot==attempt.pieRoot.get()
+            return activeContextHookReady && current!=null && attempt.reply.matches(editor,logicalReply(current)) && current.manager==attempt.manager.get() && current.pieRoot==attempt.pieRoot.get()
                 && ActiveConversationChain.sameCurrent(attempt.pie.get(),attempt.context.get(),attempt.param.get(),current.pie,current.context,current.param)
                 && ConversationMatch.same(attempt.fragment.get(),attempt.fragmentRoot.get(),attempt.type,attempt.peer,attempt.guild,
                     current.fragment,current.root,current.type,current.peer,current.guild);
@@ -214,6 +246,7 @@ final class UiTapGate {
             if(activity!=null && !activity.isFinishing() && !activity.isDestroyed())Toast.makeText(activity,"逐消息切换已取消，保留当前输入；请确认后再试",Toast.LENGTH_LONG).show();
         }
         java.util.Arrays.fill(attempt.textHash,(byte)0);
+        attempt.reply.clear();attempt.spans.clear();
     }
     private Binding binding(View button,Activity activity) throws Throwable {return binding(button,activity,false);}
     private Binding binding(View button,Activity activity,boolean diagnose) throws Throwable {
@@ -297,26 +330,16 @@ final class UiTapGate {
         }
         return null;
     }
-    private static boolean plainEditor(EditText editor) {
-        if(!ComposerTextGate.supported(editor.getText()))return false;
-        // QQ 9.3.50 h.n() clears the gja tag and compound drawables but leaves
-        // aio.reply.a movement installed. Movement alone does not prove a reply.
-        int key=editor.getResources().getIdentifier("gja","id","com.tencent.mobileqq");
-        if(key==0 || editor.getTag(key)!=null)return false;
-        for(android.graphics.drawable.Drawable drawable:editor.getCompoundDrawables())if(drawable!=null)return false;
-        for(android.graphics.drawable.Drawable drawable:editor.getCompoundDrawablesRelative())if(drawable!=null)return false;
-        return true;
-    }
     /** QQ's GetReplyData route is a read-only query; never clears or edits a reply. */
-    private static int replyState(Binding binding) {
+    private static Object logicalReply(Binding binding) {
         try {
             Class<?> intent=XposedHelpers.findClass("com.tencent.mobileqq.aio.input.reply.InputReplyMsgIntent$GetReplyData",binding.context.getClass().getClassLoader());
             Object request=XposedHelpers.getStaticObjectField(intent,"d");
-            if(request==null || request.getClass()!=intent)return -1;
+            if(request==null || request.getClass()!=intent)return UNKNOWN_REPLY;
             Object route=XposedHelpers.callMethod(binding.context,"e"),result=XposedHelpers.callMethod(route,"k",request);
-            if(!exactClass(result,"com.tencent.mobileqq.aio.input.reply.a$a"))return -1;
-            return XposedHelpers.callMethod(result,"a")==null?0:1;
-        }catch(Throwable ignored) {return -1;}
+            if(!exactClass(result,"com.tencent.mobileqq.aio.input.reply.a$a"))return UNKNOWN_REPLY;
+            return XposedHelpers.callMethod(result,"a");
+        }catch(Throwable ignored) {return UNKNOWN_REPLY;}
     }
     /** Scan the current composer only; a quoted message in chat history is not a reply draft. */
     private static boolean richDraft(View root) {return richDraftReason(root)!=null;}
@@ -380,16 +403,17 @@ final class UiTapGate {
     private static final class Attempt implements TextWatcher,SpanWatcher,android.text.NoCopySpan {
         final WeakReference<Activity> activity;final WeakReference<View> button,root,fragmentRoot,composer,pieRoot;final WeakReference<EditText> editor;
         final WeakReference<Editable> editable;final WeakReference<Object> fragment,listener,manager,pie,context,param;final Object window;
-        final String owner,generation,peer,guild;final int type;final byte[] textHash;final ComposerTextGate.Snapshot spans;final long started=SystemClock.elapsedRealtime();
+        final String owner,generation,peer,guild;final int type;final byte[] textHash;final ComposerTextGate.Snapshot spans;final ReplyStateGate.Snapshot reply;final long started=SystemClock.elapsedRealtime();
         final SendReplayGuard guard=new SendReplayGuard(0,started,REPLAY_MS);
         volatile long revision;volatile boolean cancelled;boolean finished,finishing;
-        Attempt(Activity activity,View button,EditText editor,View root,View composer,Binding binding,Object listener,String owner,String generation) throws Exception {
+        Attempt(Activity activity,View button,EditText editor,View root,View composer,Binding binding,Object listener,String owner,String generation,ReplyStateGate.Snapshot reply) throws Exception {
             this.activity=new WeakReference<>(activity);this.button=new WeakReference<>(button);this.editor=new WeakReference<>(editor);this.root=new WeakReference<>(root);
             this.composer=new WeakReference<>(composer);
             this.editable=new WeakReference<>(editor.getText());this.fragment=new WeakReference<>(binding.fragment);this.fragmentRoot=new WeakReference<>(binding.root);
             this.manager=new WeakReference<>(binding.manager);this.pie=new WeakReference<>(binding.pie);this.context=new WeakReference<>(binding.context);this.param=new WeakReference<>(binding.param);this.pieRoot=new WeakReference<>(binding.pieRoot);
             this.listener=new WeakReference<>(listener);window=button.getWindowToken();this.owner=owner;this.generation=generation;peer=binding.peer;guild=binding.guild;type=binding.type;textHash=hash(editor.getText());
-            spans=ComposerTextGate.snapshot(editor.getText());
+            this.reply=reply;
+            spans=ComposerTextGate.snapshot(editor.getText(),reply.active());
             if(spans==null)throw new IllegalArgumentException("Input spans changed before observing the click");
         }
         void watch() {EditText input=editor.get();Editable text=editable.get();if(input!=null)input.addTextChangedListener(this);if(text!=null)text.setSpan(this,0,text.length(),Spanned.SPAN_INCLUSIVE_INCLUSIVE);}

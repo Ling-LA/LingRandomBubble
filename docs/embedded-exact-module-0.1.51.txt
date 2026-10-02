@@ -1,0 +1,1 @@
+PASS candidate embedded module is byte-for-byte identical to built standalone artifact: 159981 bytes; SHA256=8a433e4e3422ce6b5ca1d3193dd98a93a74ff4cd39dcceb528dde42a9cac20a6. Phone installation and delivery not implied.

@@ -32,6 +32,12 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
         Object savedAccount=null;
         try {
             io.github.ling.randombubble.hook.ComposerTextDeviceChecks.run(name -> check(name,true));
+            final Throwable[] replyFailure={null};
+            runOnMainSync(() -> {
+                try {io.github.ling.randombubble.hook.ReplyStateDeviceChecks.run(context,name -> check(name,true));}
+                catch(Throwable failure) {replyFailure[0]=failure;}
+            });
+            if(replyFailure[0]!=null)throw new AssertionError("Reply state checks failed",replyFailure[0]);
             io.github.ling.randombubble.hook.HostSettingsDeviceChecks.run(context,name -> check(name,true));
             io.github.ling.randombubble.hook.AccountLibraryDeviceChecks.run(context,name -> check(name,true));
             JSONObject row=JsonCodec.encode(new BubbleSpec(17,17,0L,101,201,null,0));

@@ -15,6 +15,10 @@ import android.text.style.ImageSpan;
 import android.text.style.ReplacementSpan;
 import android.text.style.StyleSpan;
 import com.tencent.mobileqq.text.style.EmoticonSpan;
+import com.tencent.qqnt.aio.at.a;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.Consumer;
 
 /** Android span classification and snapshot checks; no QQ, messages, views, or preferences. */
@@ -32,6 +36,14 @@ public final class ComposerTextDeviceChecks {
         SpannableStringBuilder text=plain();emoji(text,2,9);return text;
     }
     private static EmoticonSpan first(Editable text) {return text.getSpans(0,text.length(),EmoticonSpan.class)[0];}
+    private static SpannableStringBuilder mention() {
+        SpannableStringBuilder text=new SpannableStringBuilder("@fixture reply");text.setSpan(new a(),0,8,FLAGS);return text;
+    }
+    private static a firstMention(Editable text) {return text.getSpans(0,text.length(),a.class)[0];}
+    private static boolean rejectedReply(Editable text) {
+        try {return ComposerTextGate.snapshot(text,true)==null;}catch(Exception ignored) {return true;}
+    }
+    private static final class SubReplyMention extends a {}
     private static final class SubEmoticonSpan extends EmoticonSpan {
         SubEmoticonSpan() {super(14,32,0);}
     }
@@ -102,5 +114,63 @@ public final class ComposerTextDeviceChecks {
         check(passed,"emoticon snapshot rejects newly attached image",!saved.matches(text));
         text=plain();EmoticonSpan residue=emoji(text,2,2);saved=ComposerTextGate.snapshot(text);residue.index++;
         check(passed,"emoticon snapshot tracks zero-length residue fields",!saved.matches(text));
+
+        text=mention();
+        check(passed,"ordinary composer still rejects exact QQ mention",ComposerTextGate.snapshot(text)==null);
+        saved=ComposerTextGate.snapshot(text,true);
+        check(passed,"confirmed reply composer accepts exact QQ mention",saved!=null && saved.matches(text));
+        text=new SpannableStringBuilder("@fixture @other [smile]");text.setSpan(new a(),0,8,FLAGS);text.setSpan(new a(),9,15,FLAGS);emoji(text,16,23);
+        saved=ComposerTextGate.snapshot(text,true);
+        check(passed,"confirmed reply accepts multiple native mentions and small emoticon",saved!=null && saved.matches(text));
+        text=plain();text.setSpan(new com.tencent.qqnt.aio.at.c("fixture-uid","fixture-uin","fixture-name","fixture-name"),0,1,FLAGS);
+        check(passed,"confirmed reply rejects generic mention superclass",ComposerTextGate.snapshot(text,true)==null);
+        text=plain();text.setSpan(new SubReplyMention(),0,1,FLAGS);
+        check(passed,"confirmed reply rejects mention subclasses",ComposerTextGate.snapshot(text,true)==null);
+        text=mention();text.setSpan(firstMention(text),0,8,FLAGS|Spanned.SPAN_COMPOSING);
+        check(passed,"confirmed reply rejects composing mention",ComposerTextGate.snapshot(text,true)==null);
+        text=plain();text.setSpan(new a(),1,1,Spanned.SPAN_MARK_MARK);
+        check(passed,"confirmed reply rejects unverified zero-length mention residue",ComposerTextGate.snapshot(text,true)==null);
+        text=mention();text.setSpan(new ImageSpan(new ColorDrawable()),9,10,FLAGS);
+        check(passed,"confirmed reply mention does not authorize an image",ComposerTextGate.snapshot(text,true)==null);
+        text=mention();text.setSpan(new MentionStyle(),9,10,FLAGS);
+        check(passed,"confirmed reply still rejects unknown mention styling",ComposerTextGate.snapshot(text,true)==null);
+
+        text=mention();saved=ComposerTextGate.snapshot(text,true);a oldMention=firstMention(text);text.removeSpan(oldMention);text.setSpan(new a(),0,8,FLAGS);
+        check(passed,"reply mention snapshot rejects equal-value object replacement",!saved.matches(text));
+        text=mention();saved=ComposerTextGate.snapshot(text,true);text.setSpan(firstMention(text),1,8,FLAGS);
+        check(passed,"reply mention snapshot rejects range change",!saved.matches(text));
+        text=mention();saved=ComposerTextGate.snapshot(text,true);text.setSpan(firstMention(text),0,8,Spanned.SPAN_INCLUSIVE_INCLUSIVE);
+        check(passed,"reply mention snapshot rejects flag change",!saved.matches(text));
+        for(String name:new String[]{"d","e","r","s"}) {
+            text=mention();saved=ComposerTextGate.snapshot(text,true);firstMention(text).changePayload(name,"fixture-changed");
+            check(passed,"reply mention snapshot rejects stable payload field change "+name,!saved.matches(text));
+        }
+        text=mention();firstMention(text).changePayload("d",null);
+        check(passed,"confirmed reply rejects null mention payload",rejectedReply(text));
+        text=mention();firstMention(text).changePayload("d","ab");firstMention(text).changePayload("e","c");saved=ComposerTextGate.snapshot(text,true);
+        firstMention(text).changePayload("d","a");firstMention(text).changePayload("e","bc");
+        check(passed,"mention payload hash separates adjacent field lengths",!saved.matches(text));
+        text=mention();firstMention(text).changePayload("s","\uD800");saved=ComposerTextGate.snapshot(text,true);firstMention(text).changePayload("s","\uD801");
+        check(passed,"mention payload hash preserves unmatched UTF16 surrogates",!saved.matches(text));
+        text=mention();saved=ComposerTextGate.snapshot(text,true);firstMention(text).changePayload("d",new String("fixture-uid"));
+        check(passed,"mention payload compares string value without retaining string identity",saved.matches(text));
+        text=mention();saved=ComposerTextGate.snapshot(text,true);firstMention(text).q++;firstMention(text).v=new ColorDrawable();
+        check(passed,"mention drawing cache updates do not invalidate stable payload",saved.matches(text));
+        text=mention();saved=ComposerTextGate.snapshot(text,true);text.setSpan(new a(),9,14,FLAGS);
+        check(passed,"reply mention snapshot rejects added mention",!saved.matches(text));
+        text=mention();saved=ComposerTextGate.snapshot(text,true);text.removeSpan(firstMention(text));
+        check(passed,"reply mention snapshot rejects removed mention",!saved.matches(text));
+        text=plain();saved=ComposerTextGate.snapshot(text);text.setSpan(new a(),0,1,FLAGS);
+        check(passed,"ordinary snapshot cannot inherit reply mention authorization",!saved.matches(text));
+
+        text=mention();saved=ComposerTextGate.snapshot(text,true);String before=text.toString();a retained=firstMention(text);String[] payloadBefore=retained.payload();
+        Field listField=ComposerTextGate.Snapshot.class.getDeclaredField("inline");listField.setAccessible(true);
+        Object captured=((List<?>)listField.get(saved)).get(0);Field payloadField=captured.getClass().getDeclaredField("payload");payloadField.setAccessible(true);byte[] privateHash=(byte[])payloadField.get(captured);
+        saved.clear();boolean zero=true;for(byte value:privateHash)if(value!=0)zero=false;
+        check(passed,"reply mention snapshot clears private payload digest",zero);
+        saved.clear();check(passed,"cleared reply mention snapshot cannot authorize a draft again",!saved.matches(text));
+        check(passed,"snapshot cleanup leaves native mention draft and payload unchanged",before.equals(text.toString()) && firstMention(text)==retained && text.getSpanStart(retained)==0 && text.getSpanEnd(retained)==8 && Arrays.equals(payloadBefore,retained.payload()));
+        text=emoticon();saved=ComposerTextGate.snapshot(text);saved.clear();
+        check(passed,"ordinary snapshot cleanup also prevents later reuse",!saved.matches(text));
     }
 }

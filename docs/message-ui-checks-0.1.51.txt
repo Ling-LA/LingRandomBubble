@@ -1,0 +1,7 @@
+PASS LingBubble-reply-51-source: sent; visible exact history copies=1; composer verified
+PASS LingBubble-reply-51-A: sent; visible exact history copies=1; composer verified
+PASS LingBubble-reply-51-B: sent; visible exact history copies=1; composer verified
+PASS LingBubble-reply-51-other-C: native quoted text + QQ member mention; visible exact marker history copies=1; empty composer. Mention value kept private.
+PASS LingBubble-after-reply-51-D: sent; visible exact history copies=1; composer verified
+PASS LingBubble-reply-51-cancel-E7: draft; visible exact history copies=0; composer verified
+PASS LingBubble-after-cancel-51-F: sent; visible exact history copies=1; composer verified
