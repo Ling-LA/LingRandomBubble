@@ -1,0 +1,38 @@
+QQ 9.3.50 / LingRandomBubble 0.1.51 media anomaly comparisons
+Recorded 2026-10-03. This is sanitized runtime evidence, not a root-cause proof.
+
+Initial mode ON
+- Picture sending showed the reported abnormal behavior.
+- Ling held/resumed/cancelled remained 60/60/0; the picture click did not add a
+  Ling-held text send. No body, filename, account or conversation ID is recorded.
+
+Mode OFF in the same comparison
+- Pictures showed the same abnormal behavior with per-message mode disabled.
+- Ordinary text sent successfully with that mode disabled.
+- These observations do not prove either QQ or Ling caused the media anomaly.
+
+After an actual cold QQ start, still on 0.1.51
+- With mode OFF, a new synthetic JPEG and the same earlier PNG entered history.
+- After mode ON was restored, native JPEG sends succeeded directly in both an
+  authorized group conversation and an authorized private conversation.
+- QFun's mixed text/picture option was OFF when observed and was not changed.
+  The comparison cannot attribute the anomaly or recovery to that option.
+
+Receiver evidence
+- The receiver sent a screenshot of the group picture through an authorized
+  private conversation. That screenshot was actually read by the main executor.
+- It supports the observed group picture receipt at that time. No exit/re-entry
+  confirmation was obtained. The screenshot and private conversation remain
+  excluded from public sources; no nickname, group name or pixels are included.
+- This later media observation is separate from 0.1.51's earlier reply test,
+  whose receiver confirmation was text-only. It is not a 0.1.52 receiver result.
+
+Limits
+- The real cause remains unknown. Mode-OFF failures, no increase in Ling holds,
+  and later successes do not establish that Ling, QFun or a specific QQ state is
+  responsible. Cold-start recovery alone is not proof of a permanent fix.
+- 0.1.52 tightens native-media/old-text-wait separation and requires a confirmed
+  empty current QQ photo queue before delaying a text click. Its isolated tests
+  and installation do not establish final QQ media delivery or all-media scope.
+- Favorite stickers have a separate PicEmotionSendEvent path. A photo queue
+  observation does not establish coverage of every image/sticker/attachment.

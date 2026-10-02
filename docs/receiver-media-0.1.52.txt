@@ -1,0 +1,7 @@
+Final R2 receiver screenshot observations, 2026-10-03.
+Actually read screenshots returned through the user-authorized private conversation:
+- Group native MEDIA 52 TEST picture received (screenshot message03:23:00).
+- Group R2-after marked text received with the expected white/decorated style (03:23:21).
+- Group R2-mixed marked text plus synthetic image received in one item (03:24:53).
+- Private MEDIA 52 TEST photo and favorite-image sticker both received as two distinct native image items (03:30:50).
+These are screenshot observations, not inferred from sender history. No raw pixels, nicknames, account/group/device identifiers or private conversation text are published. No new reply/quote or exit/re-entry confirmation follows from these screenshots alone. Re-entry requested separately; result recorded separately if supplied.

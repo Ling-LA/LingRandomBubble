@@ -1,0 +1,10 @@
+Evidence scope: first two lines are FIRST52-candidate native UI submissions only (no bubble adaptation). R2 lines below refer to final artifact af96b1c1826eb2d7d209c4ea2389039d61593ebc33bc02c4c0fb847521739a5d. Every line is local UI evidence, not receiver proof.
+PASS LingBubble-media52-cold-text: sent; visible exact history copies=1; composer verified
+PASS LingBubble-media52-quote-A: sent; visible exact history copies=1; composer verified
+PASS LingBubble-media52-R2-cold: sent; visible exact history copies=1; composer verified
+PASS LingBubble-media52-R2-quote: sent; visible exact history copies=1; composer verified
+PASS LingBubble-media52-R2-after: sent; visible exact history copies=1; composer verified
+PASS LingBubble-media52-R2-mixed: sent; visible exact history copies=1; composer verified
+PASS LingBubble-media52-R2-cancel7: draft; visible exact history copies=0; composer verified
+PASS LingBubble-media52-R2-cancel7: draft; visible exact history copies=0; composer verified
+PASS LingBubble-media52-R2-final: sent; visible exact history copies=1; composer verified

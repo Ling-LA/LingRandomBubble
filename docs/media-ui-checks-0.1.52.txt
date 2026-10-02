@@ -1,0 +1,10 @@
+Final R2 0.1.52 native media checks, 2026-10-03; perMessage=true, automatic=false; two known entitled styles used for text tests.
+PASS group photo: one native sends(1) click; visible new MEDIA 52 TEST picture; composer empty; selection false; no second confirmation or input conversion observed.
+PASS group selected-photo + marked text: primary native sends button click; exact own text and fixture in one native composite history item; composer empty. Runtime remained 3/3/0 and explicitly logged nonempty/unknown photo queue native fallback; no Mall SET for this click.
+PASS group favorite sticker: saved only the synthetic MEDIA 52 TEST fixture using QQ native favorite control; tapping that one favorite added one new fixture history item directly; composer empty; no primary send click.
+PASS private photo: one native sends(1) click; one new fixture history item; composer empty; selection false; no second click.
+PASS private favorite sticker: one tap on the same synthetic favorite; a second new fixture history item; composer empty; no primary send click.
+PASS cleanup: only the newly created synthetic favorite was deleted through its preview and native confirmation; verified absent in favorite panel. Existing favorites preserved.
+PASS pending selection reversion: primary sends click then selected and cleared the fixture. Draft cancel7 remained exact with 0 visible history copies; repeated fresh return still 0/exact draft. Runtime 4/3/1 cancelled before Mall SET. This proves observed cancellation, not exclusive causality of the repository hook.
+PASS subsequent ordinary text double click: final marker exactly one visible history item and empty composer; runtime5/4/1, one confirmed Mall SET/replay. Four R2 bubble-enabled positives total, one cancellation; native media/mixed submits do not count as held text sends.
+Private screenshots/XML remain excluded; local checks alone do not prove receiver delivery, re-entry retention or long-term reliability.

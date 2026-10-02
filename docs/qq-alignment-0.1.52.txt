@@ -1,0 +1,1 @@
+PASS R2 integrated QQ APK: zipalign -c -P 16 -v 4 verification successful. Private QQ APK excluded.

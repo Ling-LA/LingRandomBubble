@@ -1,0 +1,208 @@
+QQ 9.3.50 selected-photo structure and observer boundary (2026-10-03)
+
+Source: read-only inspection of the original QQ APK retained in private device
+backup, with primary DEX checks for classes6.dex and classes21.dex, and comparison
+with the module's current MediaSelectionGate/MediaQueueObserver source. This
+record contains class shapes and summarized ordinary responsibilities only.
+No QQ APK, DEX, decompiled implementation, picture paths, media elements, account
+identifiers, conversation IDs, message body or authentication data is included.
+
+Read-only selected-media intent and result
+
+Exact intent: com.tencent.mobileqq.aio.event.InputEvent$GetSelectMediaInfo.
+  public static final d: that exact intent type -- singleton
+  eventName: com.tencent.mobileqq.aio.event.InputEvent.GetSelectMediaInfo
+Exact result: com.tencent.mobileqq.aio.input.edit.b$i.
+  private final d: java.util.List -- selected media wrappers
+  private final e: boolean -- quality flag
+  public final b(): java.util.List -- reads d
+  public final a(): boolean -- reads e
+The inspected registered photo handler returns a non-null result even when its
+selection is empty.
+The module accepts only the exact result class and exact public final instance
+List b() signature. It calls only b() and List.isEmpty(), never a(), element
+methods, iteration, filenames, toString, draw or media-content hashes. A missing
+result/list, unknown class/subclass/signature, or getter/isEmpty failure is
+UNKNOWN, not empty. This result classifier authorizes only a successfully read
+empty result. The observer's separately proved NO_HANDLER state below does not
+change null classification or accept a null response from an existing handler.
+
+Current native query owner
+
+Exact view model: com.tencent.mobileqq.aio.panel.photo.PhotoPanelVM.
+  private o: com.tencent.mobileqq.album.media.AIOMediaRepository
+  public static final S(PhotoPanelVM, com.tencent.mvi.base.route.MsgIntent):
+      com.tencent.mvi.base.route.k
+The ordinary constructor creates its repository for that VM instance. In the
+inspected onCreate path, a PhotoPanelVM$c query action is registered on the
+current getMContext().e() route; that action's call delegates to static S using
+its captured VM. onDestroy unregisters the action. The GetSelectMediaInfo branch
+reads copied selected LocalMediaInfo values from its repository, constructs QQ
+media wrappers and returns a b$i. The module does not reproduce those wrappers.
+
+Framework ownership checked by the production observer
+  com.tencent.mvi.mvvm.framework.FrameworkVM
+    mContext: com.tencent.mvi.api.runtime.b
+    public final getMContext(): com.tencent.mvi.api.runtime.b
+  runtime b.e(): com.tencent.mvi.base.route.j
+  route contract com.tencent.mvi.base.route.e
+    public k(com.tencent.mvi.base.route.MsgIntent): com.tencent.mvi.base.route.k
+
+The production capture starts only on the main thread, with the exact current
+com.tencent.aio.runtime.AIOContextImpl and installed observers. For a registered
+photo handler, a synchronous query probe requires exactly one S invocation for
+the exact singleton request,
+an exact PhotoPanelVM, both getMContext() and mContext identical to that current
+context, and VM.o identifying its exact AIOMediaRepository. The S result must be
+the same object as the route's result and an exact known-empty b$i. No latest-VM
+or historical-chat repository is selected as a substitute. Unknown or unconfirmed
+ownership/handler state retains QQ's original send instead of delaying text.
+
+Current route and precisely absent handler (NO_HANDLER)
+
+The inspected AIOContextImpl.e() returns an aio.runtime.b proxy. Its private
+final a, declared as route.j, holds the exact VMMessenger created with the
+current context by the ordinary messenger$2 path. Relevant exact shapes:
+  com.tencent.aio.runtime.b
+    private final a: com.tencent.mvi.base.route.j
+  com.tencent.mvi.base.route.VMMessenger
+    private final h: com.tencent.mvi.api.runtime.b -- current owner
+    private final d: java.util.concurrent.ConcurrentHashMap -- query handlers
+    public final s(): com.tencent.mvi.api.runtime.b -- current owner getter
+    public l(String, MsgIntent): com.tencent.mvi.base.route.k -- query dispatch
+    public j(String, com.tencent.mvi.base.route.b): void -- register
+    public a(String): void -- unregister
+The inspected l returns null when the requested handler key is absent. The
+ordinary native text-send path handles a null/non-b$i query result without
+constructing selected-photo wrappers, continuing with no selected-media list.
+That native behavior does not license an unknown handler or unknown owner.
+
+NO_HANDLER requires the exact current context, exact proxy and messenger,
+messenger.h and s() both identical to that context, and an exact current
+ConcurrentHashMap. The precise GetSelectMediaInfo event key must be absent from
+that actual map. A weak snapshot is registered before the synchronous query.
+The exact singleton must actually traverse the same messenger.l once; its
+key/owner/route/map and key absence must match before and after dispatch. Both
+dispatch and outer route results must be null, with zero PhotoPanelVM.S calls,
+no observed change and all identities still live. Any repeated/missing dispatch,
+existing handler returning null/unknown data, owner mismatch or missing map
+rejects this branch. No latest or historical context/map is substituted.
+
+Handler initialization and registration events
+
+NO_HANDLER snapshots retain weak context/route/messenger/map identities. The
+production observer watches j/a for the exact selection key on the same
+messenger, plus the actual queued map-write tasks:
+  VMMessenger$registerR$2 and VMMessenger$unregisterR$1
+    final this$0: VMMessenger
+    final $msgType: String
+    public final invoke(): void -- exact zero-argument task implementation
+The void implementation is observed rather than its Object-returning bridge.
+Both the request entry and actual queued task can invalidate a matching live
+snapshot. An unreadable queued-task owner/key conservatively invalidates live
+NO_HANDLER snapshots. PhotoPanelVM.onCreate(com.tencent.aio.api.runtime.a) for
+the same current context also marks the NO_HANDLER snapshot changed before
+photo initialization. Changed is permanent: later unregistering the handler,
+returning to an absent map key or clearing a queue cannot revive the old click.
+The observer does not register/unregister handlers or edit the native map.
+
+Repository change notifications
+
+Exact repository: com.tencent.mobileqq.album.media.AIOMediaRepository.
+  a: java.util.List -- selected LocalMediaInfo state
+  b: java.util.HashMap -- observers/callbacks
+  private final i(kotlin.Pair): void -- ordinary change notification
+The inspected notification-taking ordinary branches of add b(...), remove
+k(...), clear c() and edit/update j(...) modify selection before invoking i.
+This describes those notification branches, not every return or exception path
+of each mutator. The observed g/l/e read paths return copied selection data.
+The module observes i; it neither calls these mutators nor modifies the native
+list or any selected object.
+
+Snapshot and event boundary
+
+Before S reads the queue, the registered-handler branch records a weak snapshot
+of current context, VM and repository identities. Both capture branches share
+a limit of two live snapshots, supporting one waiting send and its short-lived
+recheck. A notification from that exact repository permanently marks each
+associated live snapshot changed.
+Clearing selection later cannot reset changed or revive the old text click.
+Every pending validation rereads the relevant known-empty or precisely absent
+handler state and compares branch and current owner identities. Switching
+between branches cannot match an old snapshot. Closed/changed/cleared snapshots
+and missing hooks reject replay.
+Completion or failure closes the snapshot. Partial hook installation is removed
+and does not authorize captures. There is no repository mutation or media send.
+
+The i hook runs before the notification, AFTER ordinary mutation has changed the
+list. It is not a hook before every mutator. Exception paths that change a list
+without notifying, future hotpatch logic and uninspected writers are not proven
+covered. Registry observation likewise covers the inspected ordinary entry and
+queued-write paths, not every possible uninspected map writer. A static ordinary
+path check and isolated result-classification tests cannot prove all runtime
+events, cold-start handler readiness or owner routing.
+
+Separate favorite-picture/sticker path
+
+The inspected PicEmotionSendEvent handling in AIOSendMsgVMDelegate.q constructs
+its outgoing media list directly from the event payload and uses its native M
+send path. It does not establish PhotoPanelVM repository/GetSelectMediaInfo
+participation. An empty photo queue therefore does NOT establish that every
+favorite sticker, image, mixed message or attachment state has been covered.
+Non-native media buttons remain on QQ's original click handling; no per-image
+bubble-switch promise follows from this schema.
+
+Evidence boundary
+
+The 0.1.52 Android fixtures check exact result/empty/unknown classification and
+avoid reading opaque media contents. They do not operate QQ chat, register a
+real owner route, prove a real i notification, or validate native media delivery.
+The first 0.1.52 build could not capture state after actual cold start before
+opening the album (held/resumed/cancelled 0/0/0). Opening the album established
+the registered handler and allowed a bound empty capture, but an additional
+exact listener-class requirement blocked adaptation. That requirement has been
+removed; the original non-null listener identity is still captured and checked
+before replay. The R2 build and isolated checks have completed. Actual COLD took
+2020/2026ms; text and an ensuing quote before opening the album, text after the
+album, and final double-click text each produced one visible message, with the
+quote card retained and an empty composer. The final send process was
+held/resumed/cancelled 5/4/1, heartbeat 788/sync0. Selecting and then clearing
+photos cancelled one waiting text before SET; two checks across navigation saw
+zero old messages and the exact retained draft, then a new text succeeded.
+This observable cancellation does NOT independently prove that an i hook,
+onCreate or a registration task caused it.
+
+Native group/private photos and the single synthetic favorite-picture fixture
+were directly sent with one visible result and no repair click. Native text
+plus selected photo produced one mixed message without increasing Ling holds.
+Only that newly created favorite fixture was removed afterwards. Receiver
+screenshots actually read showed the group photo/after style/mixed combination
+and private photo/favorite images. Separately, the user replied "全部保留"
+confirming re-entry into group/private chats preserved the photo/favorite,
+cold/quote/final bubble styles and quote card. No post-re-entry screenshot was
+read; that portion is a user text confirmation. These native successes do not
+turn the separate favorite path into selected-photo queue coverage or per-image
+switching.
+
+Registration/unregistration task triggers, their independent causal attribution,
+exceptional mutation without notification and future hotpatch writers were not
+separately validated. Final actual COLD was 1916/1927ms; exact original 224 style
+IDs/60 seconds/perMessage=true/automatic=false/collect=false and the 2644-entry
+library/2644 selected entries were read back. The fresh panel-check process was
+0/0/0, heartbeat 106/sync0, with no additional sends; it is separate from the
+5/4/1 send process. The final pulled phone module matched the frozen 280055-byte
+R2 artifact SHA256 af96b1c1826eb2d7d209c4ea2389039d61593ebc33bc02c4c0fb847521739a5d.
+Independent module/test apps were absent, USB original0 retained, only five
+explicit synthetic media files and the new favorite were removed, and QQ was
+neither uninstalled nor data-cleared. The inspected crash buffer contained no
+QQ fatal from the R2 start at 10-03 03:19:42; this does not cover all buffer errors
+or long-term operation. No all-media, long-term or root-cause-fix claim follows.
+Earlier 0.1.51 image recovery after restart preceded this branch and is recorded in
+media-failure-0.1.51.txt; its root cause remains unproved.
+
+Current report: VALIDATION-2026-10-03-0.1.52.md.
+Final restore/environment proofs: config-restored-0.1.52.txt,
+qq-cold-final-0.1.52.txt, current-final-0.1.52.txt, device-final-0.1.52.txt,
+embedded-exact-module-0.1.52.txt. Receiver sources: receiver-media-0.1.52.txt and
+receiver-retention-0.1.52.txt; actual screenshot observations and separate user
+re-entry confirmation are not the same evidence.

@@ -1,0 +1,2 @@
+PASS R2 candidate embedded module is byte-for-byte identical to the final built artifact: 280055 bytes; SHA256=af96b1c1826eb2d7d209c4ea2389039d61593ebc33bc02c4c0fb847521739a5d. Installation and delivery are separate checks.
+PASS freshly pulled final phone QQ contains the same final embedded module SHA256=af96b1c1826eb2d7d209c4ea2389039d61593ebc33bc02c4c0fb847521739a5d; independent module/test applications absent. Private installed QQ APK excluded.

@@ -1,0 +1,2 @@
+PASS after actual COLD QQ start: exact original 224 IDs and seconds=60 persisted; perMessage=True; IDs SHA256=617c8727692ee77b5edc2b831ac035767bd093f974119d2a39de809e7636c60c.
+PASS fresh native panel: automatic=false, perMessage=true, collect=false; library=2644 >= original2644; selected=2644 unchanged.

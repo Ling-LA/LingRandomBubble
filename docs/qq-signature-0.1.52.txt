@@ -1,0 +1,1 @@
+PASS R2 integrated QQ APK v2 signature verified; certificate exactly matches the freshly backed-up installed QQ certificate. Private QQ APK excluded.

@@ -32,6 +32,7 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
         Object savedAccount=null;
         try {
             io.github.ling.randombubble.hook.ComposerTextDeviceChecks.run(name -> check(name,true));
+            io.github.ling.randombubble.hook.MediaSelectionDeviceChecks.run(name -> check(name,true));
             final Throwable[] replyFailure={null};
             runOnMainSync(() -> {
                 try {io.github.ling.randombubble.hook.ReplyStateDeviceChecks.run(context,name -> check(name,true));}

@@ -1,6 +1,14 @@
 # 当前测试报告入口
 
-当前版本为 **0.1.51 / code 52**。[96组核心](core-tests-0.1.51.txt)、[196项Android](device-safety-0.1.51.txt)通过；[构建和Lint](android-build-0.1.51.txt)为0 errors/28 warnings，[QQ覆盖安装](embedded-update-0.1.51.txt)成功。真实QQ普通/引用正向六条各一条，关闭引用的一次等待永久取消、未提交SET且0条/精确草稿保留。单发送进程最终**7/6/1、心跳3374/sync0**，[诊断](reply-final-run-0.1.51.txt)及[UI记录](message-ui-checks-0.1.51.txt)。接收端两款不同、引用卡片保留及重进保持来自用户回复“是”，没有读取接收端截图。范围和限制见[51报告](VALIDATION-2026-10-02-0.1.51.md)。
+当前版本为 **0.1.52 / code 53**。最终 R2 [96组核心](core-tests-0.1.52.txt)/[214项Android](device-safety-0.1.52.txt)通过，[构建/Lint](android-build-0.1.52.txt)0 errors/28 warnings，已更新至实际LSPatch集成QQ9.3.50。冷启动普通文字、引用及图片后普通文字通过，群/私聊图片与合成收藏表情均直接发送；选图＋文字交QQ原生发送，等待中选图再清空永久取消。四条气泡正向与一次取消，发送进程[5/4/1、心跳788/sync0](media-final-run-0.1.52.txt)。[接收端截图实际读取](receiver-media-0.1.52.txt)和[用户重进“全部保留”确认](receiver-retention-0.1.52.txt)分开记录，范围见[52报告](VALIDATION-2026-10-03-0.1.52.md)。
+
+本轮旧版媒体异常在更新前重启51后已恢复，[原始对照](media-failure-0.1.51.txt)不证明根因或永久修复。52加固当前选图/非文字按钮与旧等待隔离；首候选冷启动适配失败已在R2纠正，首候选UI记录不算最终气泡通过。[实际COLD后的最终恢复](config-restored-0.1.52.txt)精确保留最新224候选/60秒/perMessage=true、automatic/collect=false、库及勾选均2644；[手机内嵌模块](embedded-exact-module-0.1.52.txt)与发布APK字节一致。[最后检查进程](current-final-0.1.52.txt)0/0/0仅恢复检查，独立应用/test已移除、USB原值0保持、仅清理本轮合成媒体。短时验证不代表长期稳定或风控安全。
+
+## 0.1.51 历史摘要
+
+以下保留51当时的引用验证结果和限制，不代替52验证。
+
+0.1.51 / code 52：[96组核心](core-tests-0.1.51.txt)、[196项Android](device-safety-0.1.51.txt)通过；[构建和Lint](android-build-0.1.51.txt)为0 errors/28 warnings，[QQ覆盖安装](embedded-update-0.1.51.txt)成功。真实QQ普通/引用正向六条各一条，关闭引用的一次等待永久取消、未提交SET且0条/精确草稿保留。单发送进程最终**7/6/1、心跳3374/sync0**，[诊断](reply-final-run-0.1.51.txt)及[UI记录](message-ui-checks-0.1.51.txt)。接收端两款不同、引用卡片保留及重进保持来自用户回复“是”，没有读取接收端截图。范围和限制见[51报告](VALIDATION-2026-10-02-0.1.51.md)。
 
 51原生引用同时核对tag/顶部图标/GetReplyData逻辑数据及等待快照，见[QQ结构](qq-reply-schema-0.1.51.txt)。A引用自己的source，B引用A双击只一条，C引用其他成员指定源并经QQ原生成员选择加入@，引用与@保留；该QQ设置没有自动@，不写自动添加。D/F分别为引用@和关闭引用之后普通文字。第一次[实际COLD](qq-cold-0.1.51.txt)后[初始配置](config-initial-0.1.51.txt)精确读回原219候选/60秒/perMessage=true；[入口0/0/0](current-entry-0.1.51.txt)为发送前快照。引用回切、h.m重绘、小表情加引用、普通无引用@原路径、后台/锁屏和新定时周期等未本轮实测；50或更早结果不补足51范围。
 

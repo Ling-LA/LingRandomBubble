@@ -1,0 +1,4 @@
+2026-10-03 final R2 receiver retention confirmation.
+Question: receiver exit/re-enter authorized group and private conversation, then check MEDIA 52 TEST native photo/favorite sticker and LingBubble-media52-R2-cold, quote and final; preserve pictures, respective bubbles and native quote card?
+Human reply: 全部保留.
+This is explicit receiver text confirmation. Separate received screenshots were actually inspected and recorded in receiver-media-0.1.52.txt; no post-re-entry screenshot was read. Private pixels, conversation names and identities excluded.

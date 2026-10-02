@@ -6,5 +6,5 @@ cd "$(dirname "$0")"
 bash tools/test-core.sh
 bash tools/gradle-bootstrap.sh --no-daemon --console=plain :app:assembleDebug :app:lintDebug
 mkdir -p out
-cp app/build/outputs/apk/debug/app-debug.apk out/LingRandomBubble-0.1.51-debug.apk
-echo 'Created: out/LingRandomBubble-0.1.51-debug.apk (embedded QQ settings; build success does not confirm device behavior; actual results: docs/TEST_REPORT.md)'
+cp app/build/outputs/apk/debug/app-debug.apk out/LingRandomBubble-0.1.52-debug.apk
+echo 'Created: out/LingRandomBubble-0.1.52-debug.apk (embedded QQ settings; build success does not confirm device behavior; actual results: docs/TEST_REPORT.md)'

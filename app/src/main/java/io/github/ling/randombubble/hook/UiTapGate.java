@@ -48,6 +48,7 @@ final class UiTapGate {
     private final List<WeakReference<Object>> aioContexts=new ArrayList<>();
     private volatile Attempt pending;
     private volatile boolean activeContextHookReady;
+    private final MediaQueueObserver media=new MediaQueueObserver();
     private boolean activeContextHookAttempted;
     private View replaying;
     private static final Object UNKNOWN_REPLY=new Object();
@@ -146,8 +147,9 @@ final class UiTapGate {
             XposedHelpers.findAndHookMethod(replyUi,"n",replyUiChanged);
             XposedHelpers.findAndHookMethod(replyUi,"m",XposedHelpers.findClass("com.tencent.mobileqq.aio.reply.d",loader),
                 XposedHelpers.findClass("com.tencent.mobileqq.aio.reply.d$a",loader),replyUiChanged);
+            if(!media.install(loader))throw new IllegalStateException("Native media observation unavailable");
             activeContextHookReady=true;
-            runtime.log("逐消息 QQ 当前会话、生命周期及引用变更观察已就绪");
+            runtime.log("逐消息 QQ 当前会话、引用及原生选图队列观察已就绪");
         }catch(Throwable e) {runtime.log("逐消息当前会话观察未就绪 "+e.getClass().getSimpleName()+"；保留 QQ 原发送");}
     }
     private void cancelForFragment(Object fragment) {
@@ -172,19 +174,39 @@ final class UiTapGate {
     boolean deferClick(View button) {
         if(button==replaying)return false;
         if(!runtime.bridge.perMessageEnabled() || !qqId(button,"send_btn"))return false;
+        // Album and sticker panels can reuse this resource ID. They must reach
+        // QQ even while an earlier text click is awaiting server confirmation.
+        if(!button.getClass().getName().equals("com.tencent.mobileqq.aio.input.AIOInputSendBtn")
+            || !(button instanceof TextView) || !sendLabel(((TextView)button).getText())) {
+            clearPhysical();return ordinary("非原生文字发送按钮");
+        }
         Activity activity=runtime.currentActivity();long age=SystemClock.uptimeMillis()-physicalAt;
-        if(physicalButton.get()!=button || physicalActivity.get()!=activity || age<0 || age>CLICK_MS)return false;
+        if(physicalButton.get()!=button || physicalActivity.get()!=activity || age<0 || age>CLICK_MS) {
+            Attempt previous=pending;
+            if(previous!=null && previous.button.get()==button)return ordinary("非本次物理点击，取消旧等待");
+            return false;
+        }
         clearPhysical();
-        if(pending!=null) {Toast.makeText(activity,"正在确认装扮，请稍候；不会重复发送",Toast.LENGTH_SHORT).show();return true;}
         try {
-            if(!runtime.versionSupported || !runtime.bridge.controlsHealthy() || !foreground(activity) ||
-                !button.getClass().getName().equals("com.tencent.mobileqq.aio.input.AIOInputSendBtn"))return ordinary("原生按钮或前台条件未匹配");
+            if(!runtime.versionSupported || !runtime.bridge.controlsHealthy() || !foreground(activity))return ordinary("原生按钮或前台条件未匹配");
             if(!activeContextHookReady)return ordinary("当前会话切换观察未就绪");
             View root=activity.getWindow().getDecorView();EditText editor=uniqueComposer(root);
             View composer=editor==null?null:composerContainer(button,editor);
             if(editor==null || composer==null || richDraft(composer))return ordinary("本次输入容器未适配；"+inputDiagnostic(editor,composer));
             Binding binding=binding(button,activity,true);
             if(binding==null)return ordinary("未匹配唯一会话上下文");
+            // A duplicate is consumed only for the same, still valid text draft.
+            // A new media/draft/context click cancels the old wait and stays native.
+            Attempt previous=pending;
+            if(previous!=null) {
+                if(previous.button.get()==button && previous.editor.get()==editor && valid(previous)) {
+                    Toast.makeText(activity,"正在确认装扮，请稍候；不会重复发送",Toast.LENGTH_SHORT).show();return true;
+                }
+                return ordinary("旧等待已失效，当前点击交给 QQ");
+            }
+            MediaQueueObserver.Snapshot selection=media.capture(binding.context);
+            if(selection==null)return ordinary("原生选图队列非空或状态未知");
+            try {
             ReplyStateGate.Snapshot reply=ReplyStateGate.snapshot(editor,logicalReply(binding));
             if(reply==null)return ordinary("引用或普通输入状态未能确认；"+inputDiagnostic(editor,composer));
             if(ComposerTextGate.snapshot(editor.getText(),reply.active())==null) {reply.clear();return ordinary("本次文字样式未适配；"+inputDiagnostic(editor,composer));}
@@ -195,15 +217,21 @@ final class UiTapGate {
             if("unknown".equals(owner) || !owner.equals(config.optString("account")) || !config.optBoolean("perMessage") || config.optString("generation").isEmpty()) {reply.clear();return ordinary("账号或配置未就绪");}
             Object listener=listener(button);if(listener==null) {reply.clear();return ordinary("发送监听器不可确认");}
             if(!reply.matches(editor,logicalReply(binding))) {reply.clear();return ordinary("引用状态在观察前已变化");}
-            Attempt attempt=new Attempt(activity,button,editor,root,composer,binding,listener,owner,config.optString("generation"),reply);
+            Attempt attempt=new Attempt(activity,button,editor,root,composer,binding,listener,owner,config.optString("generation"),reply,selection);
             try {attempt.watch();} catch(Throwable e) {attempt.finished=true;attempt.unwatch();reply.clear();attempt.spans.clear();return ordinary("无法观察输入变更");}
             pending=attempt;runtime.messageHeld();runtime.log(reply.active()?"逐消息引用点击已延后，等待商城确认":"逐消息物理点击已延后，等待商城确认");
+            selection=null; // The attempt now owns and closes the media observer.
             try {runtime.decoration.beforeMessage(config,owner,() -> valid(attempt),success -> finish(attempt,success));}
             catch(Throwable e) {finish(attempt,false);}
             return true;
-        } catch(Throwable e) {runtime.log("逐消息前置检查失败 "+e.getClass().getSimpleName()+"；本次沿用 QQ 原发送");return false;}
+            } finally {if(selection!=null)selection.close();}
+        } catch(Throwable e) {return ordinary("前置检查失败 "+e.getClass().getSimpleName());}
     }
-    private boolean ordinary(String reason) {runtime.log("逐消息跳过："+reason+"；本次沿用 QQ 原发送");return false;}
+    private boolean ordinary(String reason) {
+        Attempt previous=pending;
+        if(previous!=null) {previous.cancelled=true;finish(previous,false,false);}
+        runtime.log("逐消息跳过："+reason+"；本次沿用 QQ 原发送");return false;
+    }
     private boolean valid(Attempt attempt) {
         if(pending!=attempt || attempt.finished || attempt.cancelled || attempt.revision!=0)return false;
         long now=SystemClock.elapsedRealtime();if(now<attempt.started || now-attempt.started>=REPLAY_MS)return false;
@@ -218,13 +246,20 @@ final class UiTapGate {
             JSONObject config=runtime.bridge.controlSettings();
             if(!config.optBoolean("perMessage") || !attempt.owner.equals(config.optString("account")) || !attempt.generation.equals(config.optString("generation")))return false;
             Binding current=binding(button,activity);
-            return activeContextHookReady && current!=null && attempt.reply.matches(editor,logicalReply(current)) && current.manager==attempt.manager.get() && current.pieRoot==attempt.pieRoot.get()
+            if(current==null)return false;
+            MediaQueueObserver.Snapshot selected=media.capture(current.context);
+            try {if(selected==null || !attempt.selection.matches(selected))return false;}
+            finally {if(selected!=null)selected.close();}
+            return activeContextHookReady && attempt.reply.matches(editor,logicalReply(current)) && current.manager==attempt.manager.get() && current.pieRoot==attempt.pieRoot.get()
                 && ActiveConversationChain.sameCurrent(attempt.pie.get(),attempt.context.get(),attempt.param.get(),current.pie,current.context,current.param)
                 && ConversationMatch.same(attempt.fragment.get(),attempt.fragmentRoot.get(),attempt.type,attempt.peer,attempt.guild,
                     current.fragment,current.root,current.type,current.peer,current.guild);
         } catch(Throwable ignored) {return false;}
     }
     private void finish(Attempt attempt,boolean confirmed) {
+        finish(attempt,confirmed,true);
+    }
+    private void finish(Attempt attempt,boolean confirmed,boolean notify) {
         if(attempt.finished || attempt.finishing)return;
         attempt.finishing=true;
         boolean contextValid=confirmed && valid(attempt);
@@ -243,10 +278,11 @@ final class UiTapGate {
             finally {replaying=null;}
         } else {
             runtime.log("逐消息延后发送已取消；未自动发送或重试");
-            if(activity!=null && !activity.isFinishing() && !activity.isDestroyed())Toast.makeText(activity,"逐消息切换已取消，保留当前输入；请确认后再试",Toast.LENGTH_LONG).show();
+            if(notify && activity!=null && !activity.isFinishing() && !activity.isDestroyed())Toast.makeText(activity,"逐消息切换已取消，保留当前输入；请确认后再试",Toast.LENGTH_LONG).show();
         }
         java.util.Arrays.fill(attempt.textHash,(byte)0);
         attempt.reply.clear();attempt.spans.clear();
+        attempt.selection.close();
     }
     private Binding binding(View button,Activity activity) throws Throwable {return binding(button,activity,false);}
     private Binding binding(View button,Activity activity,boolean diagnose) throws Throwable {
@@ -405,14 +441,16 @@ final class UiTapGate {
         final WeakReference<Editable> editable;final WeakReference<Object> fragment,listener,manager,pie,context,param;final Object window;
         final String owner,generation,peer,guild;final int type;final byte[] textHash;final ComposerTextGate.Snapshot spans;final ReplyStateGate.Snapshot reply;final long started=SystemClock.elapsedRealtime();
         final SendReplayGuard guard=new SendReplayGuard(0,started,REPLAY_MS);
+        final MediaQueueObserver.Snapshot selection;
         volatile long revision;volatile boolean cancelled;boolean finished,finishing;
-        Attempt(Activity activity,View button,EditText editor,View root,View composer,Binding binding,Object listener,String owner,String generation,ReplyStateGate.Snapshot reply) throws Exception {
+        Attempt(Activity activity,View button,EditText editor,View root,View composer,Binding binding,Object listener,String owner,String generation,ReplyStateGate.Snapshot reply,MediaQueueObserver.Snapshot selection) throws Exception {
             this.activity=new WeakReference<>(activity);this.button=new WeakReference<>(button);this.editor=new WeakReference<>(editor);this.root=new WeakReference<>(root);
             this.composer=new WeakReference<>(composer);
             this.editable=new WeakReference<>(editor.getText());this.fragment=new WeakReference<>(binding.fragment);this.fragmentRoot=new WeakReference<>(binding.root);
             this.manager=new WeakReference<>(binding.manager);this.pie=new WeakReference<>(binding.pie);this.context=new WeakReference<>(binding.context);this.param=new WeakReference<>(binding.param);this.pieRoot=new WeakReference<>(binding.pieRoot);
             this.listener=new WeakReference<>(listener);window=button.getWindowToken();this.owner=owner;this.generation=generation;peer=binding.peer;guild=binding.guild;type=binding.type;textHash=hash(editor.getText());
             this.reply=reply;
+            this.selection=selection;
             spans=ComposerTextGate.snapshot(editor.getText(),reply.active());
             if(spans==null)throw new IllegalArgumentException("Input spans changed before observing the click");
         }
