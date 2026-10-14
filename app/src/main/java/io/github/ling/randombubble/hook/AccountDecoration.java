@@ -21,6 +21,8 @@ final class AccountDecoration {
     private final Handler main=new Handler(Looper.getMainLooper());
     private SharedPreferences preferences;
     private OfficialBubbleApi api;
+    private long nameTicket;
+    private boolean nameQueryPending;
     private ClassLoader loader;
     private volatile WeakReference<Object> handler=new WeakReference<>(null);
     private volatile String status="关闭；账号装扮由 QQ 管理";
@@ -44,6 +46,19 @@ final class AccountDecoration {
     void observe(Object h){if(h!=null)handler=new WeakReference<>(h);}
     String status(){return status;}
     void install(ClassLoader l) throws Throwable {loader=l;api=new OfficialBubbleApi(context,l,runtime);api.installLearner();}
+    boolean nameLookupReady(){return api!=null && runtime.versionSupported && pending==null && message==null && queuedManual==null && !nameQueryPending && foreground() && api.nameLookupReady();}
+    void queryBubbleName(int id,OfficialBubbleApi.Reply reply) {
+        if(api==null || !runtime.versionSupported || pending!=null || message!=null || nameQueryPending) {
+            reply.done(null,new IllegalStateException("商城忙，请稍后重试"));return;
+        }
+        nameQueryPending=true;long ticket=++nameTicket;
+        Runnable timeout=()->{if(nameQueryPending && ticket==nameTicket){nameQueryPending=false;reply.done(null,new IllegalStateException("查询超时"));}};
+        main.postDelayed(timeout,20000);
+        api.detail(id,(value,error)->main.post(()->{
+            if(!nameQueryPending || ticket!=nameTicket)return;
+            nameQueryPending=false;main.removeCallbacks(timeout);reply.done(value,error);
+        }));
+    }
     void poll(String raw,String owner){
         if(raw==null || raw.length()>262144)return;
         main.post(()->{try {accept(new JSONObject(raw),owner);tick();}catch(Throwable e){status="轮换暂缓："+e.getClass().getSimpleName();runtime.setError(status);}});

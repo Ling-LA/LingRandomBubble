@@ -103,6 +103,14 @@ public final class AccountLibraryDeviceChecks {
             File backup=new File(target.getPath()+".bak");write(backup,baseline);write(target,"{broken");
             AccountLibrary legacyRecovered=library(fake);
             check(passed,"atomic library load restores a valid backup over corrupt base",load(legacyRecovered) && !backup.exists() && baseline.equals(read(target)) && legacyRecovered.configOrNull().selected.isEmpty() && !legacyRecovered.configOrNull().enabled);
+            JSONObject named=library.document();named.getJSONArray("bubbles").getJSONObject(0).put("officialName","缓存商城名");library.store(named);
+            BubbleSpec variant=new BubbleSpec(17,17,999L,101,209,null,0);
+            Config enriched=library.addAll(Arrays.asList(variant,variant),library.configOrNull());
+            JSONObject captured=library.document().getJSONArray("bubbles").getJSONObject(2);
+            check(passed,"new capture reuses the cached mall name for its main ID",captured.getString("officialName").equals("缓存商城名"));
+            check(passed,"automatic name inheritance preserves template and does not select it",JsonCodec.decode(captured).key().equals(variant.key()) && !captured.optBoolean("selected") && enriched.selected.isEmpty());
+            AccountLibrary namedRestart=library(fake);
+            check(passed,"captured mall name survives atomic-file restart",load(namedRestart) && namedRestart.document().getJSONArray("bubbles").getJSONObject(2).getString("officialName").equals("缓存商城名"));
         } finally {
             deleteWithin(fixture,fixture);
         }

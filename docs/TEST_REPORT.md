@@ -1,6 +1,10 @@
-# 当前测试报告入口
+# 0.1.53 搜索与界面更新
 
-当前版本为 **0.1.52 / code 53**。最终 R2 [96组核心](core-tests-0.1.52.txt)/[214项Android](device-safety-0.1.52.txt)通过，[构建/Lint](android-build-0.1.52.txt)0 errors/28 warnings，已更新至实际LSPatch集成QQ9.3.50。冷启动普通文字、引用及图片后普通文字通过，群/私聊图片与合成收藏表情均直接发送；选图＋文字交QQ原生发送，等待中选图再清空永久取消。四条气泡正向与一次取消，发送进程[5/4/1、心跳788/sync0](media-final-run-0.1.52.txt)。[接收端截图实际读取](receiver-media-0.1.52.txt)和[用户重进“全部保留”确认](receiver-retention-0.1.52.txt)分开记录，范围见[52报告](VALIDATION-2026-10-03-0.1.52.md)。
+本轮记录在 [0.1.53 验证报告](VALIDATION-2026-10-14-0.1.53.md)。核心 109 组与 Android 真机 257 项检查通过；搜索/选择原生 UI 验证记录独立列出。本轮未发送消息，历史接收端结果保留如下。
+
+# 0.1.52 历史测试摘要
+
+历史版本 **0.1.52 / code 53**。最终 R2 [96组核心](core-tests-0.1.52.txt)/[214项Android](device-safety-0.1.52.txt)通过，[构建/Lint](android-build-0.1.52.txt)0 errors/28 warnings，已更新至实际LSPatch集成QQ9.3.50。冷启动普通文字、引用及图片后普通文字通过，群/私聊图片与合成收藏表情均直接发送；选图＋文字交QQ原生发送，等待中选图再清空永久取消。四条气泡正向与一次取消，发送进程[5/4/1、心跳788/sync0](media-final-run-0.1.52.txt)。[接收端截图实际读取](receiver-media-0.1.52.txt)和[用户重进“全部保留”确认](receiver-retention-0.1.52.txt)分开记录，范围见[52报告](VALIDATION-2026-10-03-0.1.52.md)。
 
 本轮旧版媒体异常在更新前重启51后已恢复，[原始对照](media-failure-0.1.51.txt)不证明根因或永久修复。52加固当前选图/非文字按钮与旧等待隔离；首候选冷启动适配失败已在R2纠正，首候选UI记录不算最终气泡通过。[实际COLD后的最终恢复](config-restored-0.1.52.txt)精确保留最新224候选/60秒/perMessage=true、automatic/collect=false、库及勾选均2644；[手机内嵌模块](embedded-exact-module-0.1.52.txt)与发布APK字节一致。[最后检查进程](current-final-0.1.52.txt)0/0/0仅恢复检查，独立应用/test已移除、USB原值0保持、仅清理本轮合成媒体。短时验证不代表长期稳定或风控安全。
 

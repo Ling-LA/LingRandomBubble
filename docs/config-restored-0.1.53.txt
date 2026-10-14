@@ -1,0 +1,3 @@
+PASS final installed QQ preserves 3103 records and all 3103 original selections; automatic=false, perMessage=true, collect=false
+PASS exact original decoration IDs, interval and per-message checkbox equal the saved pre-update configuration
+PASS cold-start grouped library contains 250 named styles; independent module app is absent

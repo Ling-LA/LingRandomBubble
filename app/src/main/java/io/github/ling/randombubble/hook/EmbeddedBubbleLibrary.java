@@ -2,7 +2,10 @@ package io.github.ling.randombubble.hook;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.res.ColorStateList;
+import android.graphics.drawable.ColorDrawable;
+import android.view.Gravity;
+import android.widget.FrameLayout;
+import io.github.ling.randombubble.ui.BubbleUi;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -15,6 +18,9 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import io.github.ling.randombubble.core.BubbleSpec;
+import io.github.ling.randombubble.core.LibrarySearch;
+import io.github.ling.randombubble.store.LibraryRows;
+import io.github.ling.randombubble.store.LibraryGroup;
 import io.github.ling.randombubble.store.JsonCodec;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -37,15 +43,18 @@ final class EmbeddedBubbleLibrary {
     private final String owner;
     private final ArrayList<JSONObject> rows=new ArrayList<>(), matches=new ArrayList<>();
     private final Rows adapter=new Rows();
+    private final ArrayList<LibraryGroup> groups=new ArrayList<>();
     private Dialog dialog;
-    private TextView summary,previous,next,filterButton,undoButton;
+    private TextView summary,pageLabel,previous,next,filterButton,undoButton,selectButton,clearButton;
+    private final HostRuntime runtime;
+    private BubbleNameIndexer names;
     private ListView list;
     private int page;
     private String query="";
     private boolean selectedOnly;
 
     private EmbeddedBubbleLibrary(Activity activity,HostRuntime runtime) {
-        this.activity=activity; bridge=runtime.bridge; owner=bridge.accountIdentity();
+        this.activity=activity; this.runtime=runtime; bridge=runtime.bridge; owner=bridge.accountIdentity();
     }
     static void show(Activity activity,HostRuntime runtime,Runnable after) {
         if(activity.isFinishing() || activity.isDestroyed()) return;
@@ -55,33 +64,42 @@ final class EmbeddedBubbleLibrary {
     private void build(Runnable after) {
         LinearLayout root=SettingsPanel.page(activity);
         dialog=SettingsPanel.dialog(activity,root);
-        dialog.setOnDismissListener(d -> { if(!activity.isFinishing() && !activity.isDestroyed()) after.run(); });
-        root.addView(SettingsPanel.label(activity,"气泡库",22,SettingsPanel.PAPER,true));
-        root.addView(SettingsPanel.label(activity,bridge.libraryMask()+" · 长按条目改名或删除",12,SettingsPanel.MUTED,false));
-        EditText search=new EditText(activity); search.setSingleLine(true); search.setInputType(InputType.TYPE_CLASS_TEXT);
-        search.setHint("搜索名称或气泡编号"); search.setTextSize(15); search.setTextColor(SettingsPanel.PAPER); search.setHintTextColor(SettingsPanel.MUTED);
-        root.addView(search,SettingsPanel.gap(activity,8));
-        summary=SettingsPanel.label(activity,"",13,SettingsPanel.MUTED,false); root.addView(summary,SettingsPanel.gap(activity,6));
+        dialog.setOnDismissListener(d -> { if(names!=null)names.stop(); if(!activity.isFinishing() && !activity.isDestroyed()) after.run(); });
+        root.setFocusableInTouchMode(true);
+        BubbleUi.libraryHeader(root,bridge.libraryMask()+" · 长按管理",dialog::dismiss);
+        EditText search=BubbleUi.search(activity);
+        root.addView(search,SettingsPanel.gap(activity,12));
+        root.addView(SettingsPanel.label(activity,"多个关键词用空格、逗号或顿号分隔",11,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,6));
+        summary=SettingsPanel.label(activity,"",12,SettingsPanel.MUTED,false); root.addView(summary,SettingsPanel.gap(activity,10));
         LinearLayout bulk=new LinearLayout(activity); root.addView(bulk,SettingsPanel.gap(activity,8));
-        addButton(bulk,"全选全部",() -> bulk(true)); addButton(bulk,"取消全选",() -> bulk(false));
-        LinearLayout selectionTools=new LinearLayout(activity); root.addView(selectionTools,SettingsPanel.gap(activity,6));
+        selectButton=addButton(bulk,"全选全部",() -> bulk(true)); selectButton.setSelected(true);
+        clearButton=addButton(bulk,"取消全选",() -> bulk(false));
+        LinearLayout selectionTools=new LinearLayout(activity); root.addView(selectionTools,SettingsPanel.gap(activity,4));
         filterButton=addButton(selectionTools,"只看已勾选：关",() -> { selectedOnly=!selectedOnly; page=0; filter(); list.setSelection(0); });
         undoButton=addButton(selectionTools,"撤销批量选择",this::undoBulk);
-        list=new ListView(activity); list.setAdapter(adapter); list.setDividerHeight(SettingsPanel.dp(activity,4));
-        list.setBackgroundColor(SettingsPanel.INK); root.addView(list,new LinearLayout.LayoutParams(-1,0,1));
-        list.setOnItemLongClickListener((parent,view,index,id) -> { edit((JSONObject)adapter.getItem(index)); return true; });
-        LinearLayout navigation=new LinearLayout(activity); root.addView(navigation,SettingsPanel.gap(activity,6));
+        TextView nameButton=SettingsPanel.pill(activity,"补全商城名称（可暂停）",false,() -> names.toggle());
+        nameButton.setTextColor(SettingsPanel.TEAL);root.addView(nameButton,SettingsPanel.gap(activity,4));
+        names=new BubbleNameIndexer(activity,dialog,runtime,owner,nameButton,this::reload);
+        FrameLayout listArea=new FrameLayout(activity);
+        LinearLayout.LayoutParams listSpace=new LinearLayout.LayoutParams(-1,0,1);listSpace.topMargin=SettingsPanel.dp(activity,8);root.addView(listArea,listSpace);
+        list=new ListView(activity); list.setAdapter(adapter);list.setDivider(new ColorDrawable(BubbleUi.CANVAS));list.setDividerHeight(SettingsPanel.dp(activity,1));
+        list.setPadding(SettingsPanel.dp(activity,12),SettingsPanel.dp(activity,4),SettingsPanel.dp(activity,12),SettingsPanel.dp(activity,4));
+        list.setBackground(SettingsPanel.round(SettingsPanel.CARD,SettingsPanel.dp(activity,14)));list.setClipToOutline(true);
+        listArea.addView(list,new FrameLayout.LayoutParams(-1,-1));
+        TextView empty=SettingsPanel.label(activity,"没有找到气泡\n试试其他名称或编号",14,SettingsPanel.MUTED,false);empty.setGravity(Gravity.CENTER);listArea.addView(empty,new FrameLayout.LayoutParams(-1,-1));list.setEmptyView(empty);
+        list.setOnItemLongClickListener((parent,view,index,id) -> { edit((LibraryGroup)adapter.getItem(index)); return true; });
+        LinearLayout navigation=new LinearLayout(activity);navigation.setGravity(Gravity.CENTER_VERTICAL);root.addView(navigation,SettingsPanel.gap(activity,8));
         previous=addButton(navigation,"上一页",() -> { page--; refresh(); list.setSelection(0); });
+        pageLabel=SettingsPanel.label(activity,"",12,SettingsPanel.MUTED,false);pageLabel.setGravity(Gravity.CENTER);navigation.addView(pageLabel,new LinearLayout.LayoutParams(0,-2,1));
         next=addButton(navigation,"下一页",() -> { page++; refresh(); list.setSelection(0); });
-        root.addView(SettingsPanel.label(activity,"全选覆盖全部分页和搜索外条目。勾选不会开启轮换；账号装扮仍需商城使用权益。",12,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
-        root.addView(SettingsPanel.pill(activity,"返回设置",true,dialog::dismiss),SettingsPanel.gap(activity,8));
+        root.addView(SettingsPanel.label(activity,"批量选择作用于全部匹配结果，包含其他页。",11,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,6));
         reload();
         search.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s,int start,int count,int after) {}
             public void onTextChanged(CharSequence s,int start,int before,int count) { query=s.toString(); page=0; filter(); list.setSelection(0); }
             public void afterTextChanged(Editable s) {}
         });
-        SettingsPanel.showDialog(dialog);
+        root.requestFocus();SettingsPanel.showDialog(dialog);
     }
     private TextView addButton(LinearLayout parent,String label,Runnable action) {
         TextView button=SettingsPanel.pill(activity,label,false,action);
@@ -105,26 +123,33 @@ final class EmbeddedBubbleLibrary {
         filter();
     }
     private void filter() {
-        matches.clear(); String needle=query.trim().toLowerCase(Locale.ROOT);
-        for(JSONObject row:rows) if((!selectedOnly || row.optBoolean("selected")) &&
-            (row.optString("name")+" "+row.optString("bubbleId")+" "+row.optString("subBubbleId")).toLowerCase(Locale.ROOT).contains(needle)) matches.add(row);
-        page=Math.max(0,Math.min(page,Math.max(0,(matches.size()-1)/PAGE_SIZE))); refresh();
+        matches.clear(); LibrarySearch search=new LibrarySearch(query);
+        for(JSONObject row:rows) if(LibraryRows.matches(row,search,selectedOnly)) matches.add(row);
+        groups.clear();groups.addAll(LibraryGroup.of(matches));
+        page=Math.max(0,Math.min(page,Math.max(0,(groups.size()-1)/PAGE_SIZE))); refresh();
     }
     private void refresh() {
-        int selected=0; for(JSONObject row:rows) if(row.optBoolean("selected")) selected++;
-        int pages=Math.max(1,(matches.size()+PAGE_SIZE-1)/PAGE_SIZE);
-        summary.setText("共 "+rows.size()+" 项 · 已勾选 "+selected+" 项 · 匹配 "+matches.size()+" 项\n第 "+(page+1)+" / "+pages+" 页，每页 "+PAGE_SIZE+" 项");
+        ArrayList<LibraryGroup> all=LibraryGroup.of(rows);int selected=0;for(LibraryGroup group:all)if(group.selected()>0)selected++;
+        int pages=Math.max(1,(groups.size()+PAGE_SIZE-1)/PAGE_SIZE);
+        summary.setText("共 "+all.size()+" 款 · 已选 "+selected+" 款 · 匹配 "+groups.size()+" 款");
+        pageLabel.setText("第 "+(page+1)+" / "+pages+" 页");
         previous.setEnabled(page>0); previous.setAlpha(page>0?1f:0.4f); next.setEnabled(page+1<pages); next.setAlpha(page+1<pages?1f:0.4f);
-        filterButton.setText("只看已勾选："+(selectedOnly?"开":"关")); updateUndoButton(); adapter.notifyDataSetChanged();
+        boolean filtered=selectedOnly || !new LibrarySearch(query).isEmpty();
+        selectButton.setText(filtered?"选择搜索结果":"全选全部");clearButton.setText(filtered?"取消结果勾选":"取消全选");
+        for(TextView button:new TextView[]{selectButton,clearButton}){button.setEnabled(!matches.isEmpty());button.setAlpha(matches.isEmpty()?0.4f:1f);}
+        filterButton.setText("只看已勾选："+(selectedOnly?"开":"关"));filterButton.setSelected(selectedOnly); updateUndoButton(); adapter.notifyDataSetChanged();
     }
     private void bulk(boolean checked) {
+        if(matches.isEmpty())return;
+        final Set<String> targets;
+        try {targets=LibraryRows.keys(matches);}catch(Exception e){SettingsPanel.error(activity,"无效气泡条目");return;}
         Set<String> before=new HashSet<>();
         if(mutate(document -> {
             JSONArray a=document.getJSONArray("bubbles");
             for(int i=0;i<a.length();i++) {
                 JSONObject row=a.getJSONObject(i);
                 if(row.optBoolean("selected")) before.add(JsonCodec.decode(row).key());
-                row.put("selected",checked);
+                if(targets.contains(JsonCodec.decode(row).key()))row.put("selected",checked);
             }
             if(!checked) document.put("enabled",false);
         })) {
@@ -153,24 +178,24 @@ final class EmbeddedBubbleLibrary {
             updateUndoButton();
         }
     }
-    private void edit(JSONObject row) {
+    private void edit(LibraryGroup group) {
         if(!currentAccount()) return;
         try {
-            BubbleSpec b=JsonCodec.decode(row); String name=row.optString("name",b.label());
-            SettingsPanel.alert(activity).setTitle(name).setItems(new String[]{"改名","删除"},(d,which) -> {
-                if(which==1) mutate(document -> {
+            Set<String> targets=group.keys();String name=group.name();
+            SettingsPanel.alert(activity).setTitle(name).setItems(new String[]{"改名（"+group.rows.size()+" 条记录）","删除（"+group.rows.size()+" 条记录）"},(d,which) -> {
+                if(which==1) SettingsPanel.alert(activity).setTitle("删除这款气泡？").setMessage("将删除当前匹配的 "+targets.size()+" 条记录；其他搜索结果不变。").setNegativeButton("取消",null).setPositiveButton("删除",(confirm,w) -> mutate(document -> {
                     JSONArray a=document.getJSONArray("bubbles"), kept=new JSONArray(); boolean selected=false;
-                    for(int i=0;i<a.length();i++) if(!JsonCodec.decode(a.getJSONObject(i)).key().equals(b.key())) {
+                    for(int i=0;i<a.length();i++) if(!targets.contains(JsonCodec.decode(a.getJSONObject(i)).key())) {
                         JSONObject item=a.getJSONObject(i); kept.put(item); selected|=item.optBoolean("selected");
                     }
                     document.put("bubbles",kept); if(!selected) document.put("enabled",false);
-                });
-                else rename(b,name);
+                })).show();
+                else rename(targets,name);
             }).show();
         } catch(Exception e) { SettingsPanel.error(activity,"无效气泡条目"); }
     }
-    private void rename(BubbleSpec b,String name) {
-        EditText input=new EditText(activity); input.setSingleLine(true); input.setTextColor(0xFF10181C); input.setText(name); input.setSelection(input.length());
+    private void rename(Set<String> targets,String name) {
+        EditText input=new EditText(activity); BubbleUi.input(input);input.setSingleLine(true); input.setText(name); input.setSelection(input.length());
         android.app.AlertDialog rename=SettingsPanel.alert(activity).setTitle("气泡名称（最多 48 字）").setView(input)
             .setNegativeButton("取消",null).setPositiveButton("保存",null).create();
         rename.setOnShowListener(d -> rename.getButton(android.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -179,33 +204,24 @@ final class EmbeddedBubbleLibrary {
             if(!currentAccount()) { rename.dismiss(); return; }
             String failure=bridge.editForAccount(owner,document -> {
                 JSONArray a=document.getJSONArray("bubbles");
-                for(int i=0;i<a.length();i++) if(JsonCodec.decode(a.getJSONObject(i)).key().equals(b.key())) a.getJSONObject(i).put("name",value);
+                for(int i=0;i<a.length();i++) if(targets.contains(JsonCodec.decode(a.getJSONObject(i)).key())) a.getJSONObject(i).put("name",value);
             });
             if(failure!=null) SettingsPanel.error(activity,failure); else { rename.dismiss(); reload(); }
         })); rename.show();
     }
     private final class Rows extends BaseAdapter {
-        public int getCount() { return Math.min(PAGE_SIZE,Math.max(0,matches.size()-page*PAGE_SIZE)); }
-        public Object getItem(int index) { return matches.get(page*PAGE_SIZE+index); }
+        public int getCount() { return Math.min(PAGE_SIZE,Math.max(0,groups.size()-page*PAGE_SIZE)); }
+        public Object getItem(int index) { return groups.get(page*PAGE_SIZE+index); }
         public long getItemId(int index) { return page*PAGE_SIZE+index; }
         public View getView(int index,View recycled,ViewGroup parent) {
-            CheckBox box=recycled instanceof CheckBox?(CheckBox)recycled:new CheckBox(activity);
-            JSONObject row=(JSONObject)getItem(index); box.setOnCheckedChangeListener(null); box.setOnLongClickListener(null); box.setEnabled(true);
-            box.setTextColor(SettingsPanel.PAPER); box.setTextSize(15); box.setPadding(SettingsPanel.dp(activity,10),SettingsPanel.dp(activity,12),SettingsPanel.dp(activity,10),SettingsPanel.dp(activity,12));
-            box.setButtonTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_checked},new int[]{}},new int[]{SettingsPanel.TEAL,SettingsPanel.MUTED}));
-            boolean checked=row.optBoolean("selected"); box.setBackground(SettingsPanel.round(checked?SettingsPanel.TEAL_DIM:SettingsPanel.CARD,SettingsPanel.dp(activity,10)));
+            CheckBox box=recycled instanceof CheckBox?(CheckBox)recycled:BubbleUi.checkBox(activity);
+            LibraryGroup group=(LibraryGroup)getItem(index); box.setOnCheckedChangeListener(null); box.setOnLongClickListener(null); box.setEnabled(true);
+            boolean checked=group.allSelected();
             try {
-                BubbleSpec b=JsonCodec.decode(row); box.setText(row.optString("name",b.label())+"\n"+b.label()); box.setChecked(checked);
-                box.setOnCheckedChangeListener((v,value) -> mutate(document -> {
-                    JSONArray a=document.getJSONArray("bubbles"); boolean any=false;
-                    for(int i=0;i<a.length();i++) {
-                        JSONObject item=a.getJSONObject(i); if(JsonCodec.decode(item).key().equals(b.key())) item.put("selected",value);
-                        any|=item.optBoolean("selected");
-                    }
-                    if(!any) document.put("enabled",false);
-                }));
-                box.setOnLongClickListener(v -> { edit(row); return true; });
-            } catch(Exception e) { box.setText("无效气泡条目"); box.setChecked(false); box.setEnabled(false); }
+                Set<String> targets=group.keys();box.setText(BubbleUi.rowLabel(group.name(),group.detail()));box.setChecked(checked);BubbleUi.partial(box,group.partial());
+                box.setOnCheckedChangeListener((v,value) -> mutate(document -> LibraryRows.select(document,targets,value)));
+                box.setOnLongClickListener(v -> { edit(group); return true; });
+            } catch(Exception e) { box.setText("无效气泡条目"); box.setChecked(false);BubbleUi.partial(box,false); box.setEnabled(false); }
             return box;
         }
     }

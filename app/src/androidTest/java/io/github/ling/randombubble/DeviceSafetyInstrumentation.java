@@ -41,6 +41,7 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
             if(replyFailure[0]!=null)throw new AssertionError("Reply state checks failed",replyFailure[0]);
             io.github.ling.randombubble.hook.HostSettingsDeviceChecks.run(context,name -> check(name,true));
             io.github.ling.randombubble.hook.AccountLibraryDeviceChecks.run(context,name -> check(name,true));
+            LibrarySearchDeviceChecks.run(name -> check(name,true));
             JSONObject row=JsonCodec.encode(new BubbleSpec(17,17,0L,101,201,null,0));
             JSONObject legacy=JsonCodec.defaults(); legacy.remove("safetyVersion");
             legacy.put("enabled",true).put("collect",true);
@@ -122,6 +123,22 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
             check("checked IDs feed decoration form",repo.selectedDecorationIds().equals("101,102"));
             repo.selectAll(false);
             check("deselect all clears selection",JsonCodec.config(repo.snapshot().toString()).selected.isEmpty());
+            repo.rename(JsonCodec.decode(row).key(),"我的小猫");
+            String decorationBeforeNames=repo.decorationSettings().toString();
+            repo.importNames(new JSONObject().put("101","商城猫猫").put("999","未知条目").toString());
+            JSONObject named=repo.snapshot().getJSONArray("bubbles").getJSONObject(0);
+            check("small name page enriches existing rows",named.getString("officialName").equals("商城猫猫"));
+            check("small name page preserves custom rename",named.getString("name").equals("我的小猫"));
+            check("small name page cannot add new library entries",repo.snapshot().getJSONArray("bubbles").length()==2);
+            check("small name page cannot select or start rotation",JsonCodec.config(repo.snapshot().toString()).selected.isEmpty() && decorationBeforeNames.equals(repo.decorationSettings().toString()));
+            repo.selectKeys(java.util.Collections.singleton(JsonCodec.decode(row).key()),true);
+            check("repository selects only explicit result keys",JsonCodec.config(repo.snapshot().toString()).selected.size()==1 && repo.selectedDecorationIds().equals("101"));
+            String exportedNames=repo.exportLibrary();repo.importLibrary(exportedNames);
+            check("library round trip preserves official and custom names",repo.snapshot().getJSONArray("bubbles").getJSONObject(0).getString("officialName").equals("商城猫猫") && repo.snapshot().getJSONArray("bubbles").getJSONObject(0).getString("name").equals("我的小猫"));
+            repo.importHost(new JSONObject().put("bubbles",new JSONArray().put(new JSONObject(row.toString()).put("officialName","商城新版猫猫").put("name","覆盖名字").put("selected",false))).toString());
+            check("host names update existing rows without changing rename or selection",repo.snapshot().getJSONArray("bubbles").getJSONObject(0).getString("officialName").equals("商城新版猫猫") && repo.snapshot().getJSONArray("bubbles").getJSONObject(0).getString("name").equals("我的小猫") && repo.selectedDecorationIds().equals("101"));
+            String namesBeforeInvalid=repo.snapshot().toString();repo.importNames(new JSONObject().put("101",true).toString());
+            check("malformed name page cannot overwrite library metadata",namesBeforeInvalid.equals(repo.snapshot().toString()));
             StringBuilder largePool=new StringBuilder();for(int i=0;i<1000;i++){if(i>0)largePool.append(',');largePool.append(2000000+i);}
             repo.configureDecoration(largePool.toString(),1800,true,false,true);
             check("1000-style pool accepted",repo.decorationSettings().getJSONArray("ids").length()==1000);

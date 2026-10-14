@@ -1,0 +1,15 @@
+PASS 3103 original records now display as 250 grouped bubbles, with all groups selected
+PASS visible list contains no repeated main bubble IDs
+PASS 小昔花花: 14 original records collapse into one searchable row
+PASS mixed name + ID OR search returns two unique styles
+PASS Chinese multi-keyword delimiter matches the same two styles
+PASS full-width numeric input remains supported
+PASS grouped query spans 10 pages and pagination remains functional
+PASS clear filtered results includes rows on page 2; no matching row remains checked there
+PASS nonmatching 青草绿 group remains selected
+PASS undo restores original group selections
+PASS select filtered results restores matched styles across pages
+PASS whole-row tap toggles one grouped bubble and its matched variants
+PASS long-press management states the exact 14-record scope; no rename/delete performed
+PASS empty state and disabled batch actions remain correct
+PASS clearing query restores grouped library with original selections

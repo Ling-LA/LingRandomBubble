@@ -114,13 +114,21 @@ final class OfficialBubbleApi {
         // the server validate every new target; never generate, strip or bypass signatures.
         item.put("itemid",id);return j;
     }
+    boolean nameLookupReady() {
+        try{String owner=account();return prefs().contains("detail."+owner) && prefs().contains("protocol."+owner);}catch(Throwable e){return false;}
+    }
     void detail(int id,Reply cb) {
         try {
             String raw=prefs().getString("detail."+account(),null);
             if(raw==null)throw new IllegalStateException("normal detail not initialized");
             JSONObject request=new JSONObject(raw);
             Object original=request.get("itemId");request.put("itemId",original instanceof String?String.valueOf(id):id);
-            request(DETAIL,request,cb);
+            String owner=account();
+            request(DETAIL,request,(value,error)->{
+                if(error==null){String name=io.github.ling.randombubble.store.LibraryRows.detailName(value,id);
+                    if(!name.isEmpty())runtime.bridge.rememberBubbleName(owner,id,name,ignored->{});}
+                cb.done(value,error);
+            });
         }catch(Throwable e){cb.done(null,e);}
     }
     boolean authorized(JSONObject j,int id) throws Throwable {

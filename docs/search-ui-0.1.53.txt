@@ -1,0 +1,23 @@
+PASS real mall-name search 小昔 matched 14 rows
+PASS mixed Chinese name + ID OR search equals union of both result sets
+PASS Chinese delimiter and two real mall names resolve the same union
+PASS full-width ID input matches normal ID
+PASS query spans 133 pages; next page works
+PASS clear results changes all 2651 matched rows across pages and preserves 452 outside selections
+PASS undo restores original full selection
+PASS select search results restores every matching page
+PASS zero-result query resets page and disables both batch actions
+PASS clearing search restores all 3103 rows; all original selections remain
+PASS name completion pauses and retains all 3103 selections
+PASS name completion resumes from uncached styles: 暂停名称补全 · 0 / 40
+PASS real library name indexing finished: 商城名称已补全
+PASS real mall-name search 小昔 matched 14 rows
+PASS mixed Chinese name + ID OR search equals union of both result sets
+PASS Chinese delimiter and two real mall names resolve the same union
+PASS full-width ID input matches normal ID
+PASS query spans 133 pages; next page works
+PASS clear results changes all 2651 matched rows across pages and preserves 452 outside selections
+PASS undo restores original full selection
+PASS select search results restores every matching page
+PASS zero-result query resets page and disables both batch actions
+PASS clearing search restores all 3103 rows; all original selections remain

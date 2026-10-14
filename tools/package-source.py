@@ -15,7 +15,7 @@ for directory in ("app/src", "tests", "tools", ".github"):
 for name in ("README.md", "START_HERE.txt", "LICENSE", "Build-Windows.cmd", "Build-Linux-Mac.sh",
              "build.gradle", "settings.gradle", "gradle.properties", "app/build.gradle", ".gitignore", ".gitattributes", "build-validation.log"):
     files.add(root / name)
-for name in ("ARCHITECTURE.md", "DEVICE_TESTS.md", "TEST_REPORT.md", "VALIDATION-2026-09-30.md", "VALIDATION-2026-10-01.md", "VALIDATION-2026-10-02.md", "VALIDATION-2026-10-02-0.1.48.md", "VALIDATION-2026-10-02-0.1.49.md", "VALIDATION-2026-10-02-0.1.50.md", "VALIDATION-2026-10-02-0.1.51.md",
+for name in ("ARCHITECTURE.md", "DEVICE_TESTS.md", "TEST_REPORT.md", "VALIDATION-2026-09-30.md", "VALIDATION-2026-10-01.md", "VALIDATION-2026-10-02.md", "VALIDATION-2026-10-02-0.1.48.md", "VALIDATION-2026-10-02-0.1.49.md", "VALIDATION-2026-10-02-0.1.50.md", "VALIDATION-2026-10-02-0.1.51.md", "VALIDATION-2026-10-03-0.1.52.md",
              "RECEIVER-RESULT-2026-09-30.md", "qq-fixed-change-diagnostics-0.1.23.txt",
              "qq-account-manual-diagnostics-0.1.44.txt", "qq-account-fixed-second-0.1.44.txt",
              "core-tests-0.1.45.txt", "device-safety-0.1.45.txt", "embedded-update-0.1.45.txt",
@@ -39,7 +39,7 @@ files.update(records)
 # Historical 0.1.50/0.1.51 records include sanitized failures and QQ class shapes.
 # Unversioned and older raw logs stay out; no private QQ files are added here.
 historical_records = []
-for historical_version in ("0.1.46", "0.1.47", "0.1.48", "0.1.49", "0.1.50", "0.1.51"):
+for historical_version in ("0.1.46", "0.1.47", "0.1.48", "0.1.49", "0.1.50", "0.1.51", "0.1.52"):
     historical_record_name = re.compile(r"[a-z0-9-]+-" + re.escape(historical_version) + r"\.txt")
     historical_records.extend(p for p in (root / "docs").glob("*.txt")
                               if historical_record_name.fullmatch(p.name))

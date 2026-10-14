@@ -105,6 +105,20 @@ public final class Repository {
         if(!value) j.put("enabled",false);
         save(j);
     }
+    public synchronized void selectKeys(Set<String> keys,boolean value) throws JSONException {
+        JSONObject document=snapshot();LibraryRows.select(document,keys,value);save(document);
+    }
+    /** Small name-only pages also work when the full library exceeds Binder limits. */
+    public synchronized void importNames(String raw) throws JSONException {
+        if(raw==null || raw.length()>32768)return;
+        JSONObject names=new JSONObject(raw);if(names.length()>64)return;
+        JSONObject document=snapshot();JSONArray rows=document.getJSONArray("bubbles");boolean changed=false;
+        for(int i=0;i<rows.length();i++) {
+            JSONObject row=rows.getJSONObject(i);Object name=names.opt(String.valueOf(row.optInt("bubbleId")));
+            if(row.optInt("bubbleId")>0 && name instanceof String)changed|=LibraryRows.mergeName(row,(String)name);
+        }
+        if(changed)save(document);
+    }
     public synchronized String selectedDecorationIds() {
         java.util.LinkedHashSet<Integer> ids=new java.util.LinkedHashSet<>();
         JSONArray rows=snapshot().optJSONArray("bubbles");
@@ -114,15 +128,17 @@ public final class Repository {
         }
         StringBuilder raw=new StringBuilder();for(int id:ids) {if(raw.length()>0)raw.append(',');raw.append(id);}return raw.toString();
     }
-    public synchronized void rename(String id, String name) throws JSONException {
+    public synchronized void rename(String id,String name) throws JSONException {renameKeys(java.util.Collections.singleton(id),name);}
+    public synchronized void renameKeys(Set<String> keys, String name) throws JSONException {
         if (name == null || name.trim().isEmpty() || name.length()>48) throw new JSONException("名称需为 1～48 字");
         JSONObject j = snapshot(); JSONArray a = j.getJSONArray("bubbles");
-        for (int i=0; i<a.length(); i++) if (JsonCodec.decode(a.getJSONObject(i)).key().equals(id)) a.getJSONObject(i).put("name",name.trim());
+        for (int i=0; i<a.length(); i++) if (keys.contains(JsonCodec.decode(a.getJSONObject(i)).key())) a.getJSONObject(i).put("name",name.trim());
         save(j);
     }
-    public synchronized void remove(String id) throws JSONException {
+    public synchronized void remove(String id) throws JSONException {removeKeys(java.util.Collections.singleton(id));}
+    public synchronized void removeKeys(Set<String> keys) throws JSONException {
         JSONObject j = snapshot(); JSONArray a = j.getJSONArray("bubbles"), result = new JSONArray();
-        for (int i=0;i<a.length();i++) if (!JsonCodec.decode(a.getJSONObject(i)).key().equals(id)) result.put(a.getJSONObject(i));
+        for (int i=0;i<a.length();i++) if (!keys.contains(JsonCodec.decode(a.getJSONObject(i)).key())) result.put(a.getJSONObject(i));
         j.put("bubbles",result);
         if (JsonCodec.config(j.toString()).selected.isEmpty()) j.put("enabled",false);
         save(j);
@@ -148,18 +164,21 @@ public final class Repository {
         JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles");
         Set<String> known=new HashSet<>();
         for(int i=0;i<a.length();i++) known.add(JsonCodec.decode(a.getJSONObject(i)).key());
-        int added=0;
+        int added=0;boolean renamed=false;
+        java.util.Map<String,JSONObject> existing=new java.util.HashMap<>();
+        for(int i=0;i<a.length();i++)existing.put(JsonCodec.decode(a.getJSONObject(i)).key(),a.getJSONObject(i));
         for(int i=0;i<extra.length();i++) {
             JSONObject row=extra.getJSONObject(i);
             BubbleSpec b=JsonCodec.decode(row);
+            if(existing.containsKey(b.key()))renamed|=LibraryRows.mergeName(existing.get(b.key()),LibraryRows.officialName(row));
             if(known.add(b.key())) {
                 String name=row.optString("name",b.label());
                 if(name.length()>48) name=name.substring(0,48);
-                a.put(JsonCodec.encode(b).put("name",name).put("selected",false));
+                a.put(LibraryRows.copyNames(row,JsonCodec.encode(b).put("name",name).put("selected",false)));
                 added++;
             }
         }
-        if(added>0) save(j);
+        if(added>0 || renamed) save(j);
         return added;
     }
     /** Host suggestions cannot enable features or select a bubble. */
@@ -183,7 +202,7 @@ public final class Repository {
         JSONArray a=snapshot().getJSONArray("bubbles"), clean=new JSONArray();
         for(int i=0;i<a.length();i++) {
             JSONObject row=a.getJSONObject(i);
-            clean.put(JsonCodec.encode(JsonCodec.decode(row)).put("name",row.optString("name","气泡")));
+            clean.put(LibraryRows.copyNames(row,JsonCodec.encode(JsonCodec.decode(row))));
         }
         return new JSONObject().put("schema",1).put("format","LingRandomBubble-library")
                 .put("bubbles",clean).toString(2);
@@ -196,12 +215,15 @@ public final class Repository {
         JSONObject j=snapshot(); JSONArray a=j.getJSONArray("bubbles"); Set<String> ids=new HashSet<>();
         for(int i=0;i<a.length();i++) ids.add(JsonCodec.decode(a.getJSONObject(i)).key());
         int added=0;
+        java.util.Map<String,JSONObject> existing=new java.util.HashMap<>();
+        for(int i=0;i<a.length();i++)existing.put(JsonCodec.decode(a.getJSONObject(i)).key(),a.getJSONObject(i));
         for(int i=0;i<incoming.length();i++) {
             JSONObject row=incoming.getJSONObject(i); BubbleSpec b=JsonCodec.decode(row);
+            if(existing.containsKey(b.key()))LibraryRows.mergeName(existing.get(b.key()),LibraryRows.officialName(row));
             if(ids.add(b.key())) {
                 String name=row.optString("name",b.label());
                 if(name.length()>48) name=name.substring(0,48);
-                a.put(JsonCodec.encode(b).put("name",name).put("selected",false)); added++;
+                a.put(LibraryRows.copyNames(row,JsonCodec.encode(b).put("name",name).put("selected",false))); added++;
             }
         }
         j.put("enabled",false); save(j); return added;

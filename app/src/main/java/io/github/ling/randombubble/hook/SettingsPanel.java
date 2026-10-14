@@ -17,13 +17,14 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import io.github.ling.randombubble.BuildConfig;
+import io.github.ling.randombubble.ui.BubbleUi;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 /** The entire settings flow uses QQ's Activity; no installed module Activity is required. */
 final class SettingsPanel {
-    static final int INK=0xFF10181C, CARD=0xFF1B282E, LINE=0xFF2C3E46;
-    static final int PAPER=0xFFE7F1F3, MUTED=0xFF8EA3AA, TEAL=0xFF2BB8A8, TEAL_DIM=0xFF163E3C;
+    static final int INK=BubbleUi.CANVAS, CARD=BubbleUi.PAPER, LINE=BubbleUi.SOFT;
+    static final int PAPER=BubbleUi.INK, MUTED=BubbleUi.MUTED, TEAL=BubbleUi.MINT, TEAL_DIM=BubbleUi.SOFT;
     private SettingsPanel() {}
     static void show(Activity activity,HostRuntime runtime) {
         if(activity.isFinishing() || activity.isDestroyed()) return;
@@ -64,7 +65,7 @@ final class SettingsPanel {
             JSONObject row=bubbles.optJSONObject(i); if(row!=null && row.optBoolean("selected")) selected++;
         }
         page.addView(label(activity,count+" 项 · 已勾选 "+selected+" 项",14,PAPER,false));
-        page.addView(label(activity,"搜索、每页 20 项、全选全部、取消全选；长按改名或删除。勾选不会自动开启轮换。",13,MUTED,false),gap(activity,6));
+        page.addView(label(activity,"名称/编号多关键词搜索、每页 20 项、选择搜索结果；长按改名或删除。勾选不会自动开启轮换。",13,MUTED,false),gap(activity,6));
         page.addView(pill(activity,"打开气泡库（搜索 / 全选）",true,() -> {
             dialog.dismiss(); EmbeddedBubbleLibrary.show(activity,runtime,() -> show(activity,runtime));
         }),gap(activity,8));
@@ -91,7 +92,7 @@ final class SettingsPanel {
         row.setBackground(round(CARD,dp(activity,14))); row.setPadding(dp(activity,14),dp(activity,12),dp(activity,12),dp(activity,12));
         LinearLayout words=column(activity); words.addView(label(activity,title,15,PAPER,true)); words.addView(label(activity,hint,12,MUTED,false));
         row.addView(words,new LinearLayout.LayoutParams(0,-2,1));
-        TextView mark=label(activity,on?"开":"关",14,on?0xFF06211E:MUTED,true); mark.setGravity(Gravity.CENTER); mark.setMinWidth(dp(activity,52));
+        TextView mark=label(activity,on?"开":"关",14,on?BubbleUi.PAPER:MUTED,true); mark.setGravity(Gravity.CENTER); mark.setMinWidth(dp(activity,52));
         mark.setBackground(round(on?TEAL:LINE,dp(activity,16))); mark.setPadding(dp(activity,12),dp(activity,6),dp(activity,12),dp(activity,6)); row.addView(mark);
         row.setOnClickListener(v -> { String failure=bridge.editForAccount(owner,d -> d.put(key,!on)); if(failure!=null) error(activity,failure); else reopen.run(); });
         page.addView(row,gap(activity,8));
@@ -102,7 +103,7 @@ final class SettingsPanel {
     }
     static LinearLayout page(Activity activity) {
         LinearLayout p=column(activity); p.setBackground(round(INK,dp(activity,18)));
-        p.setPadding(dp(activity,18),dp(activity,16),dp(activity,18),dp(activity,12)); return p;
+        p.setPadding(dp(activity,16),dp(activity,16),dp(activity,16),dp(activity,12)); return p;
     }
     static Dialog dialog(Activity activity,android.view.View body) {
         Dialog dialog=new Dialog(activity); dialog.requestWindowFeature(Window.FEATURE_NO_TITLE); dialog.setContentView(body);
@@ -120,12 +121,10 @@ final class SettingsPanel {
         TextView t=label((Activity)page.getContext(),text,13,TEAL,true); t.setPadding(dp(page.getContext(),2),dp(page.getContext(),16),0,dp(page.getContext(),6)); page.addView(t);
     }
     static TextView pill(Activity activity,String text,boolean filled,Runnable action) {
-        TextView t=label(activity,text,14,filled?0xFF06211E:PAPER,true); t.setGravity(Gravity.CENTER);
-        t.setBackground(round(filled?TEAL:CARD,dp(activity,12))); t.setPadding(dp(activity,8),dp(activity,12),dp(activity,8),dp(activity,12));
-        t.setOnClickListener(v -> action.run()); return t;
+        return BubbleUi.action(activity,text,filled,action);
     }
     static TextView label(Activity activity,String text,int sp,int color,boolean bold) {
-        TextView t=new TextView(activity); t.setText(text); t.setTextSize(sp); t.setTextColor(color); if(bold) t.setTypeface(Typeface.DEFAULT_BOLD); return t;
+        return BubbleUi.text(activity,text,sp,color,bold);
     }
     static LinearLayout column(Context context) { LinearLayout layout=new LinearLayout(context); layout.setOrientation(LinearLayout.VERTICAL); return layout; }
     static GradientDrawable round(int color,int radius) { GradientDrawable shape=new GradientDrawable(); shape.setColor(color); shape.setCornerRadius(radius); return shape; }

@@ -74,10 +74,13 @@ final class AccountLibrary {
             JSONObject document=json==null?JsonCodec.defaults():new JSONObject(json);
             JSONArray bubbles=document.getJSONArray("bubbles");
             java.util.HashSet<String> known=new java.util.HashSet<>();
+            java.util.Map<Integer,String> names=new java.util.HashMap<>();
+            for(int i=0;i<bubbles.length();i++){JSONObject row=bubbles.getJSONObject(i);String name=io.github.ling.randombubble.store.LibraryRows.officialName(row);if(!name.isEmpty())names.put(row.optInt("bubbleId"),name);}
             for(int i=0;i<bubbles.length();i++) known.add(JsonCodec.decode(bubbles.getJSONObject(i)).key());
             boolean changed=false;
             for(BubbleSpec spec:specs) if(spec!=null && known.add(spec.key())) {
-                bubbles.put(JsonCodec.encode(spec).put("name",spec.label()).put("selected",false));
+                JSONObject row=JsonCodec.encode(spec).put("name",spec.label()).put("selected",false);
+                io.github.ling.randombubble.store.LibraryRows.mergeName(row,names.get(spec.bubbleId));bubbles.put(row);
                 changed=true;
             }
             if(!changed) return current;

@@ -1,0 +1,3 @@
+PASS signing certificate matches installed QQ
+PASS all 40319 other ZIP payloads unchanged (including manifest, original QQ, loader and other modules)
+PASS only target embedded module replaced

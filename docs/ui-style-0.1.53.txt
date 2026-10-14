@@ -1,0 +1,6 @@
+PASS native square checkbox exposes checkable/checked semantics; whole-row tap deselects exactly one item
+PASS second whole-row tap restores the original selection
+PASS long-press opens Rename/Delete menu without changing data
+PASS selected-only filter remains functional and has a selected visual/accessibility state
+PASS zero results show an explicit empty state; batch actions disabled
+PASS final library has all 3103 original selections and an empty query

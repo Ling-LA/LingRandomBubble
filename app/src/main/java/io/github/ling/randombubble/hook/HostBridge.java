@@ -34,6 +34,7 @@ final class HostBridge {
     volatile Config config=Config.off();
     private final AccountLibrary library;
     private final HostSettings settings;
+    private final AutomaticBubbleNames names;
     private volatile boolean localReady;
     private volatile long controlHeartbeat;
     private volatile boolean hostOrigin=true;
@@ -42,6 +43,7 @@ final class HostBridge {
     private volatile long ticks,syncFailures;
     private final Object controlLock=new Object();
     private long editEpoch;
+    private int nameSyncOffset;
     private String lastBridgeError="";
     /** False once the standalone module app turned out to be unreachable (embedded NPatch install). */
     private volatile boolean appReachable=true;
@@ -61,6 +63,27 @@ final class HostBridge {
             settings.libraryEdited(owner);editEpoch++;runtime.log("QQ 内设置已保存；勾选 "+config.selected.size());return null;
         }catch(Exception e){return message(e);}
     }
+    /** Serialized metadata write; never changes decoration settings or selection. */
+    void rememberBubbleName(String owner,int id,String name,java.util.function.Consumer<String> done) {
+        executor.execute(() -> {
+            String failure=null;
+            synchronized(this) {
+                try {
+                    checkOwner(owner);org.json.JSONObject document=library.document();boolean changed=false;
+                    JSONArray rows=document.getJSONArray("bubbles");
+                    for(int i=0;i<rows.length();i++) {
+                        org.json.JSONObject row=rows.getJSONObject(i);
+                        if(row.optInt("bubbleId")==id)changed|=io.github.ling.randombubble.store.LibraryRows.mergeName(row,name);
+                    }
+                    if(changed){config=library.store(document);failure=library.takeSaveError();if(failure==null)editEpoch++;}
+                }catch(Exception e){failure=message(e);}
+            }
+            done.accept(failure);
+        });
+    }
+    synchronized long libraryRevision(){return editEpoch;}
+    String nameStatus(){return names.status();}
+    void toggleNames(){names.toggle();}
     synchronized org.json.JSONObject document() {
         try {refreshAccount();return library.document();}catch(Exception e){return JsonCodec.defaults();}
     }
@@ -92,7 +115,7 @@ final class HostBridge {
     private synchronized boolean refreshAccount() {
         boolean changed=library.refresh(context);
         if(changed) {
-            editEpoch++;runtime.permit.clear();pending.clear();seen.clear();localReady=false;
+            editEpoch++;nameSyncOffset=0;runtime.permit.clear();pending.clear();seen.clear();localReady=false;
             Config stored=library.configOrNull();config=stored==null?Config.off():stored;
         }
         return changed;
@@ -149,7 +172,7 @@ final class HostBridge {
     String logPath() { return logFile==null?"QQ 应用私有目录（可在面板复制诊断）":logFile.getAbsolutePath(); }
     String libraryMask() { return library==null?"未识别账号":library.mask(); }
     HostBridge(Context context,HostRuntime runtime) {
-        this.context=context; this.runtime=runtime; this.library=new AccountLibrary(context); this.settings=new HostSettings(context);
+        this.context=context; this.runtime=runtime; this.library=new AccountLibrary(context); this.settings=new HostSettings(context);this.names=new AutomaticBubbleNames(context,runtime);
     }
     void start() {
         controls.scheduleWithFixedDelay(this::pollLocal,1000,1000,TimeUnit.MILLISECONDS);
@@ -239,12 +262,25 @@ final class HostBridge {
             try {dirtyLibrary=settings.dirtyLibrary(owner);dirtyDecoration=settings.dirtyDecoration(owner);decorationJson=settings.decoration(owner).toString();}
             catch(Exception e){localReady=false;runtime.setError("QQ 内配置读取失败 "+e.getClass().getSimpleName());return;}
         }
+        names.refresh(owner,libraryJson);
         if(!providerAvailable()) {runtime.bridgeHealthy=false;appReachable=false;return;}
         if(!providerDue()) return;
         try {
             // Avoid Binder's transaction limit. Large libraries remain managed in QQ.
             boolean controlsOnly=libraryJson!=null && libraryJson.length()>131072;
             Bundle request=new Bundle();request.putString("account",owner);request.putBoolean("controlsOnly",controlsOnly);request.putString("diagnostics",runtime.report());
+            if(libraryJson!=null) {
+                JSONArray bubbles=new org.json.JSONObject(libraryJson).getJSONArray("bubbles");
+                org.json.JSONObject names=new org.json.JSONObject();
+                int start=nameSyncOffset<bubbles.length()?nameSyncOffset:0,index=start;
+                for(;index<bubbles.length() && names.length()<64;index++) {
+                    org.json.JSONObject row=bubbles.getJSONObject(index);
+                    String name=io.github.ling.randombubble.store.LibraryRows.officialName(row);
+                    if(row.optInt("bubbleId")>0 && !name.isEmpty())names.put(String.valueOf(row.optInt("bubbleId")),name);
+                }
+                nameSyncOffset=index>=bubbles.length()?0:index;
+                request.putString("bubbleNames",names.toString());
+            }
             if(!controlsOnly)request.putString("library",libraryJson);
             if(!controlsOnly && dirtyLibrary && libraryJson!=null)request.putString("hostConfig",libraryJson);
             if(dirtyDecoration) {org.json.JSONObject mirror=new org.json.JSONObject(decorationJson);mirror.remove("command");mirror.remove("expires");request.putString("hostDecoration",mirror.toString());}

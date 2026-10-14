@@ -38,6 +38,7 @@ public final class ConfigProvider extends ContentProvider {
             }
             try { repo.observe(extras.getString("candidates")); } catch(JSONException ignored) { /* reject malformed batch */ }
             if(!extras.getBoolean("controlsOnly"))try { repo.importHost(extras.getString("library")); } catch(JSONException ignored) { /* keep the module copy */ }
+            try {repo.importNames(extras.getString("bubbleNames"));}catch(JSONException ignored) { /* malformed metadata cannot replace library */ }
             repo.diagnostics(extras.getString("diagnostics"));
             if(Binder.getCallingUid()!=Process.myUid()) {
                 String hostConfig=extras.getString("hostConfig"),hostDecoration=extras.getString("hostDecoration");

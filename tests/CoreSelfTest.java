@@ -39,6 +39,42 @@ public final class CoreSelfTest {
     }
     static Map<Integer,MsgAttributeInfo> map(MsgAttributeInfo a) { Map<Integer,MsgAttributeInfo> m=new HashMap<>();m.put(17,a);return m; }
     public static void main(String[] argv) throws Exception {
+        test("name queue deduplicates IDs and allows one in-flight query",()->{
+            NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1,1,2,0,-1,null));eq(q.size(),2);
+            NameLookupQueue.Attempt a=q.poll(0);eq(a.id,1);ok(q.poll(5000)==null);q.retry(100);ok(q.poll(5000)==null);
+        });
+        test("name queue spaces successful queries and rejects duplicate callbacks",()->{
+            NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1,2));NameLookupQueue.Attempt a=q.poll(0);
+            ok(q.finish(a,true,100));ok(!q.finish(a,false,200));ok(q.poll(2099)==null);eq(q.poll(2100).id,2);
+        });
+        test("failed name lookup yields other IDs and retries with backoff",()->{
+            NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1,2));NameLookupQueue.Attempt a=q.poll(0);q.finish(a,false,0);
+            q.update("a",Arrays.asList(1,2));ok(q.poll(59999)==null);NameLookupQueue.Attempt b=q.poll(60000);eq(b.id,2);q.finish(b,true,60000);
+            ok(q.poll(299999)==null);eq(q.poll(300000).id,1);
+        });
+        test("account switch ignores previous name callback",()->{
+            NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1));NameLookupQueue.Attempt old=q.poll(0);
+            q.update("b",Arrays.asList(1));NameLookupQueue.Attempt now=q.poll(0);ok(!q.finish(old,true,1));ok(q.inFlight());ok(q.finish(now,true,2));eq(q.size(),0);
+        });
+        test("named or deleted bubbles are removed from pending queue",()->{
+            NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1,2));NameLookupQueue.Attempt a=q.poll(0);
+            q.update("a",Arrays.asList(2));ok(!q.finish(a,false,100));eq(q.poll(100).id,2);
+        });
+        test("explicit name retry respects minimum spacing",()->{
+            NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1));q.finish(q.poll(0),false,100);q.retry(200);
+            ok(q.poll(2199)==null);eq(q.poll(2200).id,1);
+        });
+        test("missing names survive queue reconstruction",()->{
+            NameLookupQueue before=new NameLookupQueue();before.update("a",Arrays.asList(1));before.finish(before.poll(0),false,100);
+            NameLookupQueue restart=new NameLookupQueue();restart.update("a",Arrays.asList(1,1));eq(restart.size(),1);eq(restart.poll(0).id,1);
+        });
+        test("library search matches Chinese names and IDs",()->{ok(new LibrarySearch("小初").matches("肥嘟嘟小初","2173887"));ok(new LibrarySearch("73887").matches("肥嘟嘟小初","2173887"));ok(!new LibrarySearch("小狗").matches("小初","2173887"));});
+        test("library keywords are OR across names and IDs",()->{LibrarySearch q=new LibrarySearch("小初 黄毛、2176246，cat;dog；bird");for(String name:new String[]{"肥嘟嘟小初","黄毛小女孩","2176246","CAT","DOG","BIRD"})ok(q.matches(name));ok(!q.matches("无关"));});
+        test("library search normalizes width case and Unicode whitespace",()->{LibrarySearch q=new LibrarySearch("　ＣＡＴ\u00a0２１７３８８７");ok(q.matches("cat"));ok(q.matches("2173887"));ok(new LibrarySearch("cat").matches("Ｃａｔ"));});
+        test("empty and delimiter-only queries match all",()->{for(String q:new String[]{"","  ","，、;；\t　"}){ok(new LibrarySearch(q).isEmpty());ok(new LibrarySearch(q).matches());}});
+        test("search metacharacters are literal and null fields safe",()->{ok(!new LibrarySearch(".*").matches(null,"cat"));ok(new LibrarySearch(".*").matches("name.*tail"));ok(new LibrarySearch(null).matches((String)null));});
+        test("search never concatenates separate fields into a false match",()->{ok(!new LibrarySearch("1234").matches("12","34"));ok(new LibrarySearch("cat CAT cat").matches("Cat"));});
+
         test("decoration intervals include both preset boundaries",()->{DecorationSettings.interval(60);DecorationSettings.interval(1800);DecorationSettings.interval(86400);});
         test("decoration intervals reject sub-minute and above-day values",()->{for(int seconds:new int[]{-1,0,59,86401,Integer.MAX_VALUE}){try{DecorationSettings.interval(seconds);throw new AssertionError();}catch(IllegalArgumentException expected){}}});
         test("decoration IDs deduplicate before rotation validation",()->{int[] ids=DecorationSettings.ids("101,101，102 102");eq(ids.length,2);eq(ids[0],101);eq(ids[1],102);DecorationSettings.rotationPool(ids.length,false,true);});

@@ -1,2 +1,3 @@
-0.1.52 / code 53: assembleDebug, assembleDebugAndroidTest and lintDebug succeeded.
+0.1.53 / code 54: search, grouped library, mint UI and automatic name enrichment.
+assembleDebug, assembleDebugAndroidTest and lintDebug succeeded.
 Android Lint: 0 errors / 28 warnings.

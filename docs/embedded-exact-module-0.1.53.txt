@@ -1,0 +1,5 @@
+PASS installed QQ APK bytes equal the final verified release integration candidate.
+PASS embedded module bytes equal LingRandomBubble-0.1.53-debug.apk (296047 bytes).
+Module SHA-256: 8a47b3127f50f3ba635858fd7fa2d8616d1b85d3d05920c3f4c48df2c0c166ae
+PASS independent module and test packages absent; QQ data retained.
+PASS final integration candidate: original signing certificate and 16 KiB alignment verified before installation.
