@@ -46,6 +46,11 @@ final class AccountDecoration {
     void observe(Object h){if(h!=null)handler=new WeakReference<>(h);}
     String status(){return status;}
     void install(ClassLoader l) throws Throwable {loader=l;api=new OfficialBubbleApi(context,l,runtime);api.installLearner();}
+    String messagePreparationIssue(String owner) {
+        if(api==null)return "商城接口尚未就绪，按当前气泡发送";
+        try {api.template(owner,1);return "";}
+        catch(Throwable missing){return "商城设置尚未初始化，按当前气泡发送；在商城正常设置一次气泡可启用切换";}
+    }
     boolean nameLookupReady(){return api!=null && runtime.versionSupported && pending==null && message==null && queuedManual==null && !nameQueryPending && foreground() && api.nameLookupReady();}
     void queryBubbleName(int id,OfficialBubbleApi.Reply reply) {
         if(api==null || !runtime.versionSupported || pending!=null || message!=null || nameQueryPending) {
@@ -211,7 +216,7 @@ final class AccountDecoration {
         if(op.message!=null){boolean send=success && valid(op.message);finishMessage(op.message,send);if(message==op.message)message=null;}
         if(message!=null)main.post(this::safeTick);
     }
-    private void finishMessage(MessageRequest request,boolean success){if(request==null || request.finished)return;request.finished=true;try{request.done.accept(success);}catch(Throwable e){runtime.setError("发送恢复被取消："+e.getClass().getSimpleName());}}
+    private void finishMessage(MessageRequest request,boolean success){if(request==null || request.finished)return;request.finished=true;if(!success)runtime.log("逐消息装扮未确认："+status);try{request.done.accept(success);}catch(Throwable e){runtime.setError("发送恢复被取消："+e.getClass().getSimpleName());}}
     private void reject(MessageRequest request){if(request!=null){finishMessage(request,false);if(message==request)message=null;}}
     private void cancelPending(String reason){if(pending!=null){status=reason;finish(pending,false);}}
     private void pause(Operation op,String reason){status=reason;runtime.log(reason);finish(op,false);}

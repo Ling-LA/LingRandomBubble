@@ -66,6 +66,10 @@ public final class ComposerTextDeviceChecks {
         check(passed,"composer accepts plain text and unicode emoji",ComposerTextGate.supported(new SpannableStringBuilder("text \uD83D\uDE42")));
         SpannableStringBuilder text=plain();Selection.setSelection(text,1);text.setSpan(new NoCopySpan.Concrete(),1,1,Spanned.SPAN_MARK_MARK);
         check(passed,"composer accepts exact framework editing markers",ComposerTextGate.supported(text));
+        check(passed,"cursor bookkeeping cannot invalidate an unchanged message",ComposerTextGate.bookkeeping(plain(),Selection.SELECTION_START) && ComposerTextGate.bookkeeping(plain(),Selection.SELECTION_END));
+        text=plain();Object marker=new NoCopySpan.Concrete();text.setSpan(marker,0,1,FLAGS|Spanned.SPAN_COMPOSING);
+        check(passed,"IME composing marker is a meaningful input change",!ComposerTextGate.bookkeeping(text,marker));
+        check(passed,"emoji and unknown span mutations still invalidate the gesture",!ComposerTextGate.bookkeeping(plain(),new EmoticonSpan(14,32,0)) && !ComposerTextGate.bookkeeping(plain(),new UnknownMarker()));
         text=plain();text.setSpan(new UnknownMarker(),1,1,Spanned.SPAN_MARK_MARK);
         check(passed,"composer rejects unknown no-copy marker",!ComposerTextGate.supported(text));
         check(passed,"composer accepts text with exact QQ small emoticon",ComposerTextGate.supported(emoticon()));

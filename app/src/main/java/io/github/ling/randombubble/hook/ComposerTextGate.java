@@ -19,6 +19,13 @@ final class ComposerTextGate {
     private static final String MENTION_BASE="com.tencent.qqnt.aio.at.c";
     private ComposerTextGate() {}
 
+    /** Cursor and observer bookkeeping are not changes to message content. */
+    static boolean bookkeeping(Spanned text,Object span) {
+        return span!=null && (text.getSpanFlags(span)&Spanned.SPAN_COMPOSING)==0
+            && (span==Selection.SELECTION_START || span==Selection.SELECTION_END || span instanceof TextWatcher
+                || span instanceof SpanWatcher || span.getClass()==android.text.NoCopySpan.Concrete.class);
+    }
+
     static boolean supported(Editable text) {
         try { return snapshot(text)!=null; } catch(Exception ignored) { return false; }
     }

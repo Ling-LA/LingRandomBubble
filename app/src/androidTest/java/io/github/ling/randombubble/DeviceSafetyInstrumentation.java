@@ -42,6 +42,7 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
             io.github.ling.randombubble.hook.HostSettingsDeviceChecks.run(context,name -> check(name,true));
             io.github.ling.randombubble.hook.AccountLibraryDeviceChecks.run(context,name -> check(name,true));
             LibrarySearchDeviceChecks.run(name -> check(name,true));
+            MallCollectionDeviceChecks.run(name -> check(name,true));
             JSONObject row=JsonCodec.encode(new BubbleSpec(17,17,0L,101,201,null,0));
             JSONObject legacy=JsonCodec.defaults(); legacy.remove("safetyVersion");
             legacy.put("enabled",true).put("collect",true);

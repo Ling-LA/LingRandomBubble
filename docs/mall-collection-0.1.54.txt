@@ -1,0 +1,11 @@
+PASS Collection OFF: mall search 布丁 leaves zero matching library entries.
+PASS live QQ 9.3.50 mall search 小昔: library matches increased from 1 to 3.
+PASS new 迷迷小昔昔 (2170750) and 萌萌小昔 (2173176) saved with official names, unselected; original 小昔花花 remains selected.
+PASS non-bubble result 迷迷小昔宝 excluded from library.
+PASS first mall browsing/search session: 13 accepted responses, 63 new main bubble IDs, 63 names, zero queue overflow.
+PASS Collection ON: the same mall search adds named 布丁 bubbles, all unselected. Matches=37
+PASS Repeated mall search 小昔: same three main IDs and checked states, no duplicate rows.
+PASS Original 28 selected styles preserved after collection.
+PASS Bubble mall category and manual scrolling: visible products found by name in library: 透明亚粉色 / 沃雅小水妖.
+PASS Cold restart: original candidate IDs, 1800-second value, timer OFF, per-message ON, collection ON and 280 selected raw rows preserved.
+PASS Cold restart: named mall harvest remains searchable, including at least 37 布丁 matches.

@@ -92,7 +92,7 @@ public final class MainActivity extends Activity {
         });
         JSONObject j=repo.snapshot();
         section("开关");
-        toggle(j,"collect","浏览时也采集","只记录样式线索；采集编号不等于账号拥有该装扮权益。");
+        toggle(j,"collect","自动收录（聊天 / 商城）","开启后到商城浏览或搜索气泡，收录已加载款式及名称；重复编号不新增，收录不授予装扮权益。");
         section("气泡库");
         text("气泡库仅作编号参考，长按可改名或删除。账号装扮轮换请在上方独立配置，服务器仍会校验使用权益。",14,false);
         JSONArray library=j.optJSONArray("bubbles");

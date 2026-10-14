@@ -28,10 +28,20 @@ final class OfficialBubbleApi {
     }
     void installLearner() throws Throwable {
         Class<?> platform=Class.forName("com.tencent.mobileqq.ntcompose.export.modules.QQKuiklyPlatformApi",false,loader);
+        try {
+            XposedBridge.hookAllMethods(Class.forName("com.tencent.kuikly.core.render.android.expand.module.KRNetworkModule",false,loader),"call",new XC_MethodHook(){
+                @Override protected void beforeHookedMethod(MethodHookParam p){
+                    if(!runtime.bridge.config.collect)return;
+                    try{MallCollector.watchHttp(p,loader,runtime,account());}catch(Throwable e){runtime.log("商城 HTTP 收录入口暂缓 "+e.getClass().getSimpleName());}
+                }
+            });
+        }catch(Throwable e){runtime.log("商城 HTTP 收录入口不可用 "+e.getClass().getSimpleName());}
         XposedBridge.hookAllMethods(platform,"call",new XC_MethodHook(){
             @Override protected void beforeHookedMethod(MethodHookParam p) {
                 try {
-                    if(Boolean.TRUE.equals(internal.get()) || p.args.length!=3 || !"sendPbRequest".equals(p.args[0]) || !(p.args[1] instanceof Object[]))return;
+                    if(Boolean.TRUE.equals(internal.get()))return;
+                    if(runtime.bridge.config.collect)try{MallCollector.watch(p,loader,runtime,account());}catch(Throwable e){runtime.log("商城收录入口暂缓 "+e.getClass().getSimpleName());}
+                    if(p.args.length!=3 || !"sendPbRequest".equals(p.args[0]) || !(p.args[1] instanceof Object[]))return;
                     Object[] args=(Object[])p.args[1];
                     if(args.length<5 || !(SET.equals(args[0]) || DETAIL.equals(args[0])) || !(args[1] instanceof byte[]) || p.args[2]==null)return;
                     Object envelope=Class.forName("com.tencent.mobileqq.WebSsoBody$WebSsoRequestBody",false,loader).getConstructor().newInstance();

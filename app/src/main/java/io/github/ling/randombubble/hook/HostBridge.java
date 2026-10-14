@@ -32,6 +32,9 @@ final class HostBridge {
         Thread t=new Thread(r,"LingBubble-Timer");t.setDaemon(true);return t;
     });
     volatile Config config=Config.off();
+    private final io.github.ling.randombubble.core.CollectionSession collectionSession=new io.github.ling.randombubble.core.CollectionSession();
+    private final java.util.concurrent.atomic.AtomicInteger mallQueued=new java.util.concurrent.atomic.AtomicInteger();
+    private volatile long mallResponses,mallAdded,mallNamed,mallDropped;
     private final AccountLibrary library;
     private final HostSettings settings;
     private final AutomaticBubbleNames names;
@@ -58,7 +61,7 @@ final class HostBridge {
     synchronized String editForAccount(String owner,Edit change) {
         try {
             checkOwner(owner);org.json.JSONObject document=library.document();change.apply(document);
-            document.put("enabled",false);config=library.store(document);
+            document.put("enabled",false);setLocalConfig(library.store(document));
             String failure=library.takeSaveError();if(failure!=null)throw new IllegalStateException(failure);
             settings.libraryEdited(owner);editEpoch++;runtime.log("QQ 内设置已保存；勾选 "+config.selected.size());return null;
         }catch(Exception e){return message(e);}
@@ -75,12 +78,50 @@ final class HostBridge {
                         org.json.JSONObject row=rows.getJSONObject(i);
                         if(row.optInt("bubbleId")==id)changed|=io.github.ling.randombubble.store.LibraryRows.mergeName(row,name);
                     }
-                    if(changed){config=library.store(document);failure=library.takeSaveError();if(failure==null)editEpoch++;}
+                    if(changed){setLocalConfig(library.store(document));failure=library.takeSaveError();if(failure==null)editEpoch++;}
                 }catch(Exception e){failure=message(e);}
             }
             done.accept(failure);
         });
     }
+    private void setLocalConfig(Config next) {
+        collectionSession.update(library.account(),next.collect);config=next;
+        if(!next.collect)pending.clear();
+    }
+    synchronized io.github.ling.randombubble.core.CollectionSession.Ticket collectionTicket(String owner) {
+        refreshAccount();collectionSession.update(library.account(),config.collect);
+        return owner!=null && owner.equals(library.account())?collectionSession.ticket():null;
+    }
+    private synchronized boolean acceptsCollection(io.github.ling.randombubble.core.CollectionSession.Ticket ticket) {
+        refreshAccount();collectionSession.update(library.account(),config.collect);
+        return collectionSession.accepts(ticket);
+    }
+    /** Bounded background work; original QQ callbacks never wait for parsing or disk. */
+    void mallResponse(io.github.ling.randombubble.core.CollectionSession.Ticket ticket,
+            java.util.concurrent.Callable<java.util.List<io.github.ling.randombubble.store.MallCatalog.Item>> parse) {
+        if(ticket==null || !acceptsCollection(ticket))return;
+        if(mallQueued.incrementAndGet()>8){mallQueued.decrementAndGet();mallDropped++;return;}
+        try {executor.execute(()->{
+            try {
+                if(!acceptsCollection(ticket))return;
+                java.util.List<io.github.ling.randombubble.store.MallCatalog.Item> items=parse.call();
+                synchronized(this) {
+                    if(!acceptsCollection(ticket))return;
+                    org.json.JSONObject document=library.document();
+                    io.github.ling.randombubble.store.MallCatalog.Merge change=io.github.ling.randombubble.store.MallCatalog.merge(document,items);
+                    if(change.changed()) {
+                        setLocalConfig(library.store(document));String error=library.takeSaveError();
+                        if(error!=null)throw new IllegalStateException(error);
+                        editEpoch++;mallAdded+=change.added;mallNamed+=change.named;
+                        runtime.log("商城收录：新增 "+change.added+" 款，补名 "+change.named+" 条");
+                    }
+                    mallResponses++;
+                }
+            }catch(Throwable e){runtime.log("商城收录暂缓 "+e.getClass().getSimpleName());}
+            finally{mallQueued.decrementAndGet();}
+        });}catch(Throwable e){mallQueued.decrementAndGet();}
+    }
+    String mallStatus(){return "响应 "+mallResponses+"；新增 "+mallAdded+" 款；补名 "+mallNamed+" 条；繁忙跳过 "+mallDropped;}
     synchronized long libraryRevision(){return editEpoch;}
     String nameStatus(){return names.status();}
     void toggleNames(){names.toggle();}
@@ -116,7 +157,7 @@ final class HostBridge {
         boolean changed=library.refresh(context);
         if(changed) {
             editEpoch++;nameSyncOffset=0;runtime.permit.clear();pending.clear();seen.clear();localReady=false;
-            Config stored=library.configOrNull();config=stored==null?Config.off():stored;
+            Config stored=library.configOrNull();setLocalConfig(stored==null?Config.off():stored);
         }
         return changed;
     }
@@ -185,7 +226,7 @@ final class HostBridge {
         try {
             boolean changed=refreshAccount();
             Config stored=library.configOrNull();
-            if(stored!=null && (changed || config.selected.isEmpty())) config=stored;
+            if(stored!=null && (changed || config.selected.isEmpty())) setLocalConfig(stored);
             int styles=stored==null?0:stored.selected.size();
             runtime.log("读取账号气泡库 "+library.mask()+" 样式 "+styles+saveFailure());
         } catch(Throwable ignored) { /* never take down QQ while resolving the account */ }
@@ -198,14 +239,14 @@ final class HostBridge {
     private void adopt(Config next) {
         if(!next.enabled || next.fixed!=config.fixed || next.groups!=config.groups
                 || next.privateChats!=config.privateChats || !next.selected.equals(config.selected)) runtime.permit.clear();
-        config=next;
+        setLocalConfig(next);
     }
     private boolean remember(BubbleSpec b) {
         refreshAccount();
         boolean added=true;
         try {org.json.JSONArray rows=library.document().getJSONArray("bubbles");for(int i=0;i<rows.length();i++)if(JsonCodec.decode(rows.getJSONObject(i)).key().equals(b.key())){added=false;break;}}catch(Exception ignored){}
         Config next=library.add(b,config);
-        if(next!=null) config=next;
+        if(next!=null) setLocalConfig(next);
         if(added)editEpoch++;
         java.util.HashSet<String> looks=new java.util.HashSet<>();
         for(BubbleSpec s:config.selected) if(s!=null) looks.add(io.github.ling.randombubble.core.BubblePicker.visual(s));
@@ -229,7 +270,7 @@ final class HostBridge {
             pending.clear();
         }
         String before=library.json();Config next=library.addAll(batch.values(),config);
-        if(next!=null)config=next;
+        if(next!=null)setLocalConfig(next);
         if(!java.util.Objects.equals(before,library.json()))editEpoch++;
         for(BubbleSpec b:batch.values())seen.put(b.key(),Boolean.TRUE);
     }
@@ -240,7 +281,7 @@ final class HostBridge {
             for(BubbleSpec b:found) {
                 int before=config.selected.size();
                 Config next=library.add(b,config);
-                if(next!=null) config=next;
+                if(next!=null) setLocalConfig(next);
                 if(config.selected.size()>before) added++;
             }
             runtime.log("本地气泡素材 "+found.size()+" 个，新入库 "+added+" 样式 "+config.selected.size()+saveFailure());
@@ -253,7 +294,7 @@ final class HostBridge {
         final long epoch;
         synchronized(this) {
             if(refreshAccount()) {
-                editEpoch++;runtime.permit.clear();Config stored=library.configOrNull();config=stored==null?Config.off():stored;
+                editEpoch++;runtime.permit.clear();Config stored=library.configOrNull();setLocalConfig(stored==null?Config.off():stored);
                 runtime.log("切换账号气泡库 "+library.mask()+" 样式 "+config.selected.size()+saveFailure());
             }
             owner=library.account();epoch=editEpoch;

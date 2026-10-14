@@ -60,7 +60,7 @@ final class EmbeddedDecorationPanel {
         }
         update.run(); SettingsPanel.heading(form,"间隔秒数"); form.addView(interval);
         form.addView(SettingsPanel.label(activity,"低频预设 1800 秒，高频预设 60 秒，可自行修改为 60～86400 秒。手动切换到第一个编号；自动随机轮换不同款式，至少需要两款。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
-        form.addView(SettingsPanel.label(activity,"支持点击发送按钮的普通文字、QQ 自带小表情及引用回复文字，引用内 QQ 原生 @ 随引用处理。图片消息、表情包图、无引用 @、附件、Enter 或脚本消息沿用 QQ 原发送。失败保留输入；等待期间替换或取消引用、修改文本或表情、会话或环境变化均取消本次发送。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
+        form.addView(SettingsPanel.label(activity,"支持点击发送按钮的普通文字、QQ 自带小表情及引用回复文字，引用内 QQ 原生 @ 随引用处理。图片消息、表情包图、无引用 @、附件、Enter 或脚本消息沿用 QQ 原发送。切换失败且输入、会话未变时按当前气泡发送，切换暂缓 60 秒；等待期间替换或取消引用、修改文本或表情、会话或环境变化均取消本次发送。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
         form.addView(SettingsPanel.label(activity,"仅在 QQ 前台且屏幕解锁时执行。全选或收录不代表拥有使用权益。高频及逐消息会增加账号设置请求，建议优先使用低频。",13,SettingsPanel.MUTED,false),SettingsPanel.gap(activity,8));
         TextView failure=SettingsPanel.label(activity,"",13,0xFFA13B46,false); failure.setVisibility(View.GONE); form.addView(failure,SettingsPanel.gap(activity,8));
         form.addView(SettingsPanel.pill(activity,"保存并执行",true,() -> {

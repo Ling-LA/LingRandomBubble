@@ -57,7 +57,7 @@ final class SettingsPanel {
             else { Toast.makeText(activity,"已停止计时和逐消息轮换；已提交的装扮请求可能仍会完成",Toast.LENGTH_LONG).show(); reopen.run(); }
         }),gap(activity,8));
         heading(page,"采集");
-        toggle(page,bridge,owner,document,"collect","自动收录","仅记录样式编号，不获得装扮权益",reopen);
+        toggle(page,bridge,owner,document,"collect","自动收录","浏览聊天或商城时收录；在商城搜索想要的气泡即可。自动保存名称、去重，不获得装扮权益",reopen);
         heading(page,"气泡库");
         JSONArray bubbles=document.optJSONArray("bubbles");
         int count=bubbles==null?0:bubbles.length(), selected=0;

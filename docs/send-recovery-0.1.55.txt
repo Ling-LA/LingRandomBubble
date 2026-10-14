@@ -1,0 +1,14 @@
+Final 0.1.55 R2; QQ 9.3.50; LSPatch embedded; Android 16.
+D: missing mall template; native send; holds/resumes/cancels=0/0/0.
+Normal SVIP mall setup learned template successfully.
+E: plain text; official entitlement and server confirmation 2153379; original click resumed once.
+F: native quote + double physical click; server confirmation 2173887; original click resumed once.
+After E/F: holds/resumes/cancels=2/2/0. UI checks each one visible copy and empty composer.
+These are sender-side results; no current receiver verification.
+F: native quoted source is present in QQ history as reply card resource id/27v.
+G7: changed then restored test draft; old send cancelled; zero history copies and exact draft retained. A new physical click then sent one copy and cleared composer.
+G7 diagnostics: holds/resumes/cancels=3/2/1. Cancel reason=text modification; new click 24 seconds later used native cooldown bypass.
+B: synthetic unavailable candidate rejected by mall with 110005; no SET submitted; unchanged draft resumed once using current style.
+C: next click 36 seconds later bypassed rotation during 60-second cooldown.
+After B/C: holds/resumes/cancels=4/3/1; UI one copy each, empty composers.
+H: actual COLD restart; original 145-candidate configuration; server confirmed 2178872 and original send resumed once. New process counters=1/1/0; one visible history copy and empty composer. Mall template persisted across restart.

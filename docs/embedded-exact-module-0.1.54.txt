@@ -1,0 +1,3 @@
+PASS module bytes extracted from currently installed QQ match the delivered module APK.
+Size: 215081 bytes
+SHA-256: e5a2e91a7cedc162f6b11587d2a308ed6b90b16e86416d09aaae7190ba0d35c1

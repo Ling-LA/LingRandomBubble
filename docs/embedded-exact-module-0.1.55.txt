@@ -1,0 +1,2 @@
+PASS installed QQ embedded module exactly equals final 0.1.55 APK
+SHA256 3b045ab9686b78bc61d30f28ac5b6c06ecffdf2102482a7a38d44dae9a7a03e3

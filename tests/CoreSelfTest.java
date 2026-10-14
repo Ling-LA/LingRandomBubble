@@ -39,6 +39,22 @@ public final class CoreSelfTest {
     }
     static Map<Integer,MsgAttributeInfo> map(MsgAttributeInfo a) { Map<Integer,MsgAttributeInfo> m=new HashMap<>();m.put(17,a);return m; }
     public static void main(String[] argv) throws Exception {
+        test("mall collection is disabled until a known account explicitly enables it",()->{
+            CollectionSession gate=new CollectionSession();ok(gate.ticket()==null);gate.update("unknown",true);ok(gate.ticket()==null);
+            gate.update("12345678",false);ok(gate.ticket()==null);gate.update("12345678",true);ok(gate.accepts(gate.ticket()));
+        });
+        test("turning collection off rejects callbacks and turning it back on cannot revive them",()->{
+            CollectionSession gate=new CollectionSession();gate.update("12345678",true);CollectionSession.Ticket old=gate.ticket();
+            gate.update("12345678",false);ok(!gate.accepts(old));gate.update("12345678",true);ok(!gate.accepts(old));ok(gate.accepts(gate.ticket()));
+        });
+        test("account changes reject old mall callbacks including switching back",()->{
+            CollectionSession gate=new CollectionSession();gate.update("12345678",true);CollectionSession.Ticket old=gate.ticket();
+            gate.update("87654321",true);ok(!gate.accepts(old));gate.update("12345678",true);ok(!gate.accepts(old));
+        });
+        test("unrelated library updates preserve a valid collection session",()->{
+            CollectionSession gate=new CollectionSession();gate.update("12345678",true);CollectionSession.Ticket token=gate.ticket();
+            gate.update("12345678",true);ok(gate.accepts(token));ok(!gate.accepts(null));
+        });
         test("name queue deduplicates IDs and allows one in-flight query",()->{
             NameLookupQueue q=new NameLookupQueue();q.update("a",Arrays.asList(1,1,2,0,-1,null));eq(q.size(),2);
             NameLookupQueue.Attempt a=q.poll(0);eq(a.id,1);ok(q.poll(5000)==null);q.retry(100);ok(q.poll(5000)==null);
@@ -182,6 +198,10 @@ public final class CoreSelfTest {
         test("expired permit cannot change attributes",()->{Env e=new Env();e.permit.arm("hi",0);eq(e.policy.prepare(args("hi",null),NORMAL,2501,true,true,true,0,false,true,Arrays.asList(A)).reason,SendPolicy.Reason.NO_PERMIT);});
         test("two quick sends choose independently",()->{Env e=new Env();e.permit.arm("hi",1000);BubbleSpec first=e.run(args("hi",null),NORMAL,0).used;e.permit.arm("yo",1000);BubbleSpec second=e.run(args("yo",null),NORMAL,0).used;ok(first!=null && second!=null && !first.equals(second));});
         test("existing account bubble slot is restyled",()->{MsgAttrAdapter a=new MsgAttrAdapter(CoreSelfTest.class.getClassLoader());MsgAttributeInfo own=attribute();Map<Integer,MsgAttributeInfo> m=new HashMap<>();m.put(0,own);Map<Object,Object> result=a.withBubble(m,A);eq(result.size(),1);eq(((MsgAttributeInfo)result.get(0)).vasMsgInfo.bubbleInfo.bubbleId,101);eq(own.vasMsgInfo.bubbleInfo.bubbleId,7);});
+        test("failed decoration bypass lasts exactly one minute",()->{SendFallback f=new SendFallback();ok(!f.active("a","g",0));ok(f.fail("a","g",10));ok(f.active("a","g",60009));ok(!f.active("a","g",60010));});
+        test("repeated failure does not extend cooldown or notification",()->{SendFallback f=new SendFallback();ok(f.fail("a","g",0));ok(!f.fail("a","g",50000));ok(!f.active("a","g",60000));});
+        test("native fallback is scoped to account configuration and monotonic time",()->{SendFallback f=new SendFallback();f.fail("a","g",100);ok(!f.active("b","g",101));ok(!f.active("a","h",101));ok(!f.active("a","g",99));});
+        test("fallback still requires one unchanged live gesture",()->{SendReplayGuard g=new SendReplayGuard(0,0,45000);ok(g.consume(0,100,true));ok(!g.consume(0,101,true));ok(!new SendReplayGuard(0,0,45000).consume(1,100,true));ok(!new SendReplayGuard(0,0,45000).consume(0,100,false));});
         System.out.println("\nRESULT: "+passed+" test groups passed. These are policy/fixture tests, NOT Android builds or QQ device tests.");
     }
 }

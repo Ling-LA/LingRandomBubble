@@ -154,7 +154,7 @@ final class HostRuntime {
             +"\n\n有效发送点击："+arms.get()+"\n已替换发送参数："+applied.get()
             +"\n复读/转发/原对象跳过："+skipRepeat.get()+"\n未知来源调用栈跳过："+skipUnknownSource.get()+"\n无匹配点击跳过："+skipNoPermit.get()
             +"\n非普通文字/聊天类型跳过："+skipType.get()+"\n开关/适配条件不满足："+skipDisabled.get()
-            +"\n名称补全："+bridge.nameStatus()+"\n原消息访问次数："+recordsSeen.get()+"\n属性处理异常："+errors.get()+"\n读取到气泡模板次数："+observations.get()
+            +"\n商城收录："+bridge.mallStatus()+"\n名称补全："+bridge.nameStatus()+"\n原消息访问次数："+recordsSeen.get()+"\n属性处理异常："+errors.get()+"\n读取到气泡模板次数："+observations.get()
             +"\n最近诊断："+error+"\n\n最近未知来源类/方法（无参数）：\n"+lastUnknownFrames
             +"\n\n运行日志（不含正文）：\n"+dumpLogs()
             +"\n\n“已替换发送参数”不代表服务器已接受，更不代表对方已看到。\n仅统计计数和接口状态；不记录正文、QQ号、群号或令牌。";

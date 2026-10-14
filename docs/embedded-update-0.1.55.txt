@@ -1,0 +1,6 @@
+PASS signing certificate matches installed QQ
+PASS all 40319 other ZIP payloads unchanged (including manifest, original QQ, loader and other modules)
+PASS only target embedded module replaced
+PASS final R2 QQ replacement installed successfully; QQ data retained
+PASS pulled installed QQ signature verified; original signer SHA256 c081890cf2a1adf13e56d7b50a4f3d8edb35b7c46d6ccc732dd997b7e433be1d
+PASS pulled installed QQ 16 KiB ZIP alignment

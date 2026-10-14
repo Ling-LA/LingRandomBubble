@@ -1,0 +1,3 @@
+PASS after actual COLD: original 145 candidate IDs exactly restored, interval 1800 seconds, timer OFF, perMessage ON.
+Candidate list SHA256 708fc3820026ed8ebac4a486d318f37e3f37b985f67e848310b9aec7a8f8fdb6
+PASS library groups 365 >= original 365; selected groups 145 unchanged. Collection switch untouched during this test.

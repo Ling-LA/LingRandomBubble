@@ -1,0 +1,9 @@
+PASS LingBubble-send-55-A: sent; visible exact history copies=1; composer verified
+PASS LingBubble-uninitialized-55-D: sent; visible exact history copies=1; composer verified
+PASS LingBubble-switch-55-E: sent; visible exact history copies=1; composer verified
+PASS LingBubble-quote-55-F: sent; visible exact history copies=1; composer verified
+PASS LingBubble-cancel-55-G7: draft; visible exact history copies=0; composer verified
+PASS LingBubble-cancel-55-G7: sent; visible exact history copies=1; composer verified
+PASS LingBubble-fallback-55-B: sent; visible exact history copies=1; composer verified
+PASS LingBubble-native-55-C: sent; visible exact history copies=1; composer verified
+PASS LingBubble-cold-55-H: sent; visible exact history copies=1; composer verified

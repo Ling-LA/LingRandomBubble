@@ -1,0 +1,1 @@
+PASS QQ installed; independent module and test packages absent; QQ data retained.

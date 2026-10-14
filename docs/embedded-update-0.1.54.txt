@@ -1,0 +1,5 @@
+PASS installed QQ signing certificate retained.
+PASS all 40319 other ZIP payloads unchanged, including QQ manifest, original payload, loader and other modules.
+PASS only the embedded Ling module replaced.
+PASS APK v2 signature verification and 16 KiB alignment check.
+PASS adb install -r completed; QQ was not uninstalled and its data was not cleared.
