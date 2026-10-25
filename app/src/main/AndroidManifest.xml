@@ -14,7 +14,7 @@
         <activity android:name=".ui.BubbleLibraryActivity" android:exported="false" />
         <!-- Every IPC method checks Binder UID. Only QQ and this app can use it. -->
         <provider android:name=".store.ConfigProvider"
-            android:authorities="io.github.ling.randombubble.config"
+            android:authorities="${applicationId}.config"
             android:exported="true" android:grantUriPermissions="false" />
         <meta-data android:name="xposedmodule" android:value="true" />
         <meta-data android:name="xposeddescription" android:value="账号气泡手动/定时切换，支持库搜索和全选。目标 QQ 9.3.50。" />

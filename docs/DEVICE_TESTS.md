@@ -1,3 +1,13 @@
+# 0.1.56 包名迁移验证方法
+
+本轮无 ADB 设备，新包名 Android 检查仅完成编译，不能视为真机通过。后续安装模块与测试 APK 后运行：
+
+```text
+adb shell am instrument -w -r io.github.ling_la.randombubble.test/io.github.ling.randombubble.DeviceSafetyInstrumentation
+```
+
+检查 APK 新安装身份、Provider authority 与所属包、既有设置 Activity 的启动解析；此外保留全部历史配置安全检查。LSPatch 迁移应移除旧模块、加入新模块并保留其他模块和 QQ 数据；核对运行状态版本、库与勾选、原候选/模式、商城初始化和测试会话发送。LSPosed 启用新包作用域并停用旧包。独立应用通过 JSON 导入气泡库；检查新旧 Provider 不冲突。上述现场步骤本轮未执行，实际结果见本版验证报告。
+
 # 0.1.55 发送失败回退回归
 
 分别检查未初始化接口、可用候选与不可用候选；每次仅点击一次，并核对历史只有一条及输入框清空。失败后60秒内新消息应沿用QQ原发送；双击不能重复发送。等待期间修改草稿或离开会话，原点击应取消且不自动发送改变后的内容。Android测试覆盖冷却边界、账号/配置隔离、一次恢复许可、光标观察器及真实表情标记变更。实际完成范围见 [55 报告](VALIDATION-2026-10-15-0.1.55.md)。

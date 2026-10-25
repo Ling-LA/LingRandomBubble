@@ -31,6 +31,12 @@ public final class DeviceSafetyInstrumentation extends DeviceInteractionInstrume
         java.lang.reflect.Field accountField=null;
         Object savedAccount=null;
         try {
+            check("installed application ID uses maintainer namespace",context.getPackageName().equals("io.github.ling_la.randombubble"));
+            check("provider authority follows installed module identity",ConfigProvider.AUTHORITY.equals(context.getPackageName()+".config"));
+            android.content.pm.ProviderInfo provider=context.getPackageManager().resolveContentProvider(ConfigProvider.AUTHORITY,0);
+            check("new provider resolves to this module",provider!=null && context.getPackageName().equals(provider.packageName) && ConfigProvider.class.getName().equals(provider.name));
+            android.content.Intent launch=context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
+            check("new package launches the existing settings activity",launch!=null && launch.getComponent()!=null && launch.getComponent().getClassName().equals(io.github.ling.randombubble.ui.MainActivity.class.getName()));
             io.github.ling.randombubble.hook.ComposerTextDeviceChecks.run(name -> check(name,true));
             io.github.ling.randombubble.hook.MediaSelectionDeviceChecks.run(name -> check(name,true));
             final Throwable[] replyFailure={null};

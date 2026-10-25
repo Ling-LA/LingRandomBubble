@@ -11,7 +11,8 @@ import java.util.zip.*;
  * Uses only the manager's published bundled default keystore, never private app data.
  */
 public final class UpdateEmbeddedModule {
-    private static final String MODULE="assets/lspatch/modules/io.github.ling.randombubble.apk";
+    private static final String MODULE="assets/lspatch/modules/io.github.ling_la.randombubble.apk";
+    private static final String LEGACY_MODULE="assets/lspatch/modules/io.github.ling.randombubble.apk";
     private static String sha(byte[] bytes) throws Exception {
         byte[] hash=MessageDigest.getInstance("SHA-256").digest(bytes);
         StringBuilder out=new StringBuilder(); for(byte b:hash) out.append(String.format("%02x",b)); return out.toString();
@@ -25,6 +26,15 @@ public final class UpdateEmbeddedModule {
     }
     public static void main(String[] args) throws Exception {
         if(args.length!=5 && args.length!=6) throw new IllegalArgumentException("before candidate module manager expected-certificate-sha256 [realign]");
+        // A package migration must be integrated by LSPatch, including its module registry.
+        // Replacing bytes under the old key can leave two identities or a stale registry.
+        // Reject before touching output or looking up signing material.
+        try(ZipFile before=new ZipFile(args[0])) {
+            if(before.getEntry(LEGACY_MODULE)!=null)
+                throw new IllegalArgumentException("Legacy module identity found; remove the old module and reintegrate the new package with LSPatch first");
+            if(before.getEntry(MODULE)==null)
+                throw new IllegalArgumentException("Expected new-package embedded module absent; integrate with LSPatch first");
+        }
         Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
         KeyStore.PrivateKeyEntry key=null;
         try(ZipFile manager=new ZipFile(args[3])) {

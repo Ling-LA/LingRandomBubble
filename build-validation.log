@@ -1,3 +1,5 @@
-0.1.55 / code 56: per-message failure fallback and bounded notifications.
+0.1.56 / code 57: Android application identity migration to io.github.ling_la.randombubble.
 assembleDebug, assembleDebugAndroidTest and lintDebug succeeded.
 Android Lint: 0 errors / 29 warnings.
+117 core test groups and 16 built APK/embedded identity checks passed.
+No ADB device connected; no current Android runtime or QQ delivery testing.

@@ -11,7 +11,8 @@ import org.json.JSONException;
 
 /** Not a public control API. Exported only so the injected QQ process can sync metadata. */
 public final class ConfigProvider extends ContentProvider {
-    public static final String AUTHORITY="io.github.ling.randombubble.config";
+    // Use the module identity even when this class is loaded inside QQ.
+    public static final String AUTHORITY=io.github.ling.randombubble.BuildConfig.APPLICATION_ID+".config";
     public static final Uri URI=Uri.parse("content://"+AUTHORITY);
     @Override public boolean onCreate() { return true; }
     private void authorize() {

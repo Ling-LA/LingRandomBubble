@@ -2,7 +2,7 @@
 
 ## 介绍
 
-Ling 随机气泡是一个 Android QQ 模块，通过 QQ 的商城接口切换账号气泡装扮，让未安装模块的接收端也能看到相应样式。当前版本为 **0.1.55**，已验证环境为 **QQ 9.3.50 / LSPatch 集成加载**，其他 QQ 版本和加载环境需自行验证。
+Ling 随机气泡是一个 Android QQ 模块，通过 QQ 的商城接口切换账号气泡装扮，让未安装模块的接收端也能看到相应样式。当前版本为 **0.1.56**，Android 包名已迁移为 **`io.github.ling_la.randombubble`**，用于匹配维护者 GitHub 账号和 LSPosed 模块仓库要求。历史发送验证环境为 **QQ 9.3.50 / LSPatch 集成加载**；本次包名迁移的验证范围见下文。
 
 主要功能：
 
@@ -21,10 +21,18 @@ Ling 随机气泡是一个 Android QQ 模块，通过 QQ 的商城接口切换�
 
 ### 下载与加载
 
-1. 在 [Releases](https://github.com/Ling-LA/LingRandomBubble/releases) 下载模块安装包，例如 `LingRandomBubble-0.1.55-debug.apk`。名称带 `androidTest` 的文件用于开发测试，无需日常安装。
+1. 在 [Releases](https://github.com/Ling-LA/LingRandomBubble/releases) 下载模块安装包，例如 `LingRandomBubble-0.1.56-debug.apk`。名称带 `androidTest` 的文件用于开发测试，无需日常安装。
 2. 使用 LSPatch 将模块集成到 QQ，安装集成后的 QQ。更新已有集成模块时，也需要重新集成新版本；**单独安装模块 APK 不会替换 QQ 内嵌模块**。更新时保留原签名及应用数据，避免卸载 QQ 或清除聊天记录。
 3. 重启 QQ，进入 **QQ → 设置 → 模块 → Ling 随机气泡**。独立模块应用为可选组件；如同时使用，应与内嵌模块保持相同版本。
 4. 每个新账号先在 QQ 装扮商城正常设置一次自己有权使用的气泡，初始化商城接口。已初始化账号通常无需每次启动都重复操作。
+
+### 从旧包名迁移
+
+0.1.55 及更早版本使用 `io.github.ling.randombubble`，0.1.56 起使用 `io.github.ling_la.randombubble`。Android 将它们视为两个应用，不能按同包名覆盖升级。
+
+- **LSPatch 集成加载**：重新修补时移除旧模块，加入新包名的模块，并保留其他原有模块。使用一致的 QQ 签名覆盖安装；不要卸载 QQ 或清除数据。包名迁移需要更新加载器的模块登记，不能仅替换旧包名路径下的 APK。QQ 内的气泡库、账号配置和商城模板仍使用原存储位置；本轮尚未实机复测迁移后的保留结果。
+- **LSPosed 或本地模块加载**：安装新版，启用新版并选择 QQ 作用域，停用旧版后重启 QQ。不要同时加载两个版本。
+- **独立配置应用**：如旧应用中有需要保留的气泡库，先导出 JSON，再在新应用中导入。旧应用私有数据不会因改包名自动复制；核对气泡库及轮换配置后再自行处理旧应用。
 
 ### 配置气泡
 
@@ -68,9 +76,9 @@ Ling 随机气泡是一个 Android QQ 模块，通过 QQ 的商城接口切换�
 
 ### 验证范围
 
-0.1.55 已通过 117 组核心测试、287 项 Android 真机检查及构建/Lint 检查。本版针对逐消息失败后阻止发送与重复提示增加回退保护；QQ 实测步骤与边界见本版验证报告。Android 检查不等同于 QQ 消息交付测试，历史接收端结果不代替本轮验证。
+0.1.56 针对 Android 应用身份、配置 Provider 和内嵌更新工具进行包名迁移。构建、APK 身份和校验结果见本版验证报告。0.1.55 的 117 组核心检查、287 项 Android 真机检查及 QQ 发送验证作为历史记录保留；本轮没有连接 ADB 设备，未重新验证新包名的真机安装、QQ 加载或接收端显示。
 
-实现细节见 [架构说明](docs/ARCHITECTURE.md)，本版证据见 [0.1.55 验证报告](docs/VALIDATION-2026-10-15-0.1.55.md)，历史发送与接收端验证见 [测试报告](docs/TEST_REPORT.md)。各版本结果分别记录，不互相替代。
+实现细节见 [架构说明](docs/ARCHITECTURE.md)，本版证据见 [0.1.56 验证报告](docs/VALIDATION-2026-10-25-0.1.56.md)，历史发送与接收端验证见 [测试报告](docs/TEST_REPORT.md)。各版本结果分别记录，不互相替代。
 
 ## 构建
 
@@ -104,7 +112,7 @@ bash Build-Linux-Mac.sh
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-便捷脚本也会将安装包复制到 `out/LingRandomBubble-0.1.55-debug.apk`。版本号以 `app/build.gradle` 为准。
+便捷脚本也会将安装包复制到 `out/LingRandomBubble-0.1.56-debug.apk`。版本号以 `app/build.gradle` 为准。
 
 ### 测试与其他构建方式
 

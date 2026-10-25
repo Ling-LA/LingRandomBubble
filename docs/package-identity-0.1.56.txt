@@ -1,0 +1,18 @@
+PASS built APK has maintainer-owned application ID
+PASS built version matches source
+PASS provider has only new authority
+PASS Xposed module metadata retained
+PASS no new application permissions
+PASS new application resolves existing settings class
+PASS Xposed entry remains declared
+PASS DEX class exists: io.github.ling.randombubble.hook.HookEntry
+PASS DEX class exists: io.github.ling.randombubble.ui.MainActivity
+PASS compiled provider URI uses new identity
+PASS test APK targets new application
+PASS test runner class resolves in DEX
+PASS module and test APK signatures verify
+PASS updater refuses legacy identity before output/signing access
+PASS updater refuses dual identity before output/signing access
+PASS updater refuses missing identity before output/signing access
+RESULT: 16 APK/embedded identity checks passed. No Android device or QQ delivery tested.
+APK SHA256 8eca65863c362900b24725da89f3bb241df845602a6e7b05e068006b101df63f

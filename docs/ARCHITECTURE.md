@@ -1,3 +1,9 @@
+# 0.1.56 应用身份迁移
+
+Android applicationId 改为 io.github.ling_la.randombubble，Provider authority 使用 ${applicationId}.config，运行时代码使用 BuildConfig.APPLICATION_ID 派生，避免注入 QQ 时误用宿主包名。Java namespace 与类名保留 io.github.ling.randombubble，Xposed 入口与组件类继续沿用，降低类加载变更范围；这是代码命名空间，不是 APK 的安装身份。
+
+QQ 私有存储名称及格式保持原样，AccountLibrary、HostSettings、商城模板等沿用原路径。独立应用的新旧 UID/私有目录分离，不自动跨 UID 迁移；通过用户导出导入库数据。新旧 Provider authority 不冲突。内嵌更新工具只接受已集成新身份且不含旧身份的 QQ；旧包名或双身份在创建候选文件、读取签名材料之前即拒绝，首次迁移应由 LSPatch 重新集成。
+
 # 0.1.55 逐消息回退
 
 UiTapGate 在截获前检查账号商城模板；未就绪时直接沿用原点击。装扮失败后独立核对输入、会话、前台、账号及配置，并重新检查移除观察器后状态；仍有效时消费单次恢复许可并调用原按钮一次。输入或上下文改变则取消。SendFallback 对账号和配置代次记录60秒退避，限制失败提示且不保存草稿、不授权发送；后续新物理点击沿用QQ原路径。重复等待提示每次等待只出现一次。ComposerTextGate忽略光标和观察器维护标记，真实内容、组合输入和其他未知标记仍使旧等待失效。
